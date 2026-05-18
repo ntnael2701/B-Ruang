@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B-Ruang Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="page-header">
+        <div>
+          <h1>B-Ruang Admin</h1>
+          <p>Kelola permintaan booking ruangan Undip.</p>
+        </div>
+        <div class="header-actions">
+          <span>Halo, <strong><%= user.name %></strong></span>
+          <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Daftar Permintaan Booking</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mahasiswa</th>
+                <th>Ruang</th>
+                <th>Tanggal</th>
+                <th>Jam</th>
+                <th>Keperluan</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (bookings.length === 0) { %>
+                <tr><td colspan="7" class="empty">Belum ada permintaan booking.</td></tr>
+              <% } %>
+              <% bookings.forEach(booking => { %>
+                <tr>
+                  <td><%= booking.user_name %> (<%= booking.user_email %>)</td>
+                  <td><%= booking.room_name %></td>
+                  <td><%= booking.date %></td>
+                  <td><%= booking.start_time %> - <%= booking.end_time %></td>
+                  <td><%= booking.purpose %></td>
+                  <td class="status <%= booking.status.toLowerCase() %>"><%= booking.status %></td>
+                  <td>
+                    <% if (booking.status === 'Pending') { %>
+                      <form class="inline-form" action="/admin/decision" method="post">
+                        <input type="hidden" name="booking_id" value="<%= booking.id %>" />
+                        <button type="submit" name="action" value="approve" class="btn btn-approve">Setujui</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-reject">Tolak</button>
+                      </form>
+                    <% } else { %>
+                      <span class="small-text">Selesai</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

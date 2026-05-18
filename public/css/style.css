@@ -1,0 +1,261 @@
+:root {
+  --purple: #5f3dc4;
+  --orange: #f48c2a;
+  --soft: #f8f2ff;
+  --text: #2c1f3a;
+  --muted: #5b4765;
+  --bg: #fffafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f6ebff 0%, #fff2e9 100%);
+  color: var(--text);
+}
+
+.container {
+  width: min(1100px, 100% - 32px);
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: var(--purple);
+}
+
+.page-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-actions span {
+  color: var(--muted);
+}
+
+.card,
+.auth-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(95, 61, 196, 0.12);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(95, 61, 196, 0.08);
+  margin-bottom: 24px;
+}
+
+.auth-card {
+  max-width: 480px;
+  margin: 80px auto;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--purple);
+}
+
+h2 {
+  margin-top: 0;
+}
+
+.rooms-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.room-card {
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f9f2ff 0%, #fff6ee 100%);
+  border: 1px solid rgba(244, 140, 42, 0.14);
+}
+
+.room-card p {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.booking-form,
+.login-form,
+.inline-form {
+  display: grid;
+  gap: 14px;
+}
+
+.booking-form label,
+.login-form label {
+  font-weight: 600;
+  color: #4d386d;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(95, 61, 196, 0.18);
+  border-radius: 12px;
+  background: white;
+  color: var(--text);
+}
+
+textarea {
+  resize: vertical;
+}
+
+button.btn,
+button.btn-secondary,
+button.btn-approve,
+button.btn-reject {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn {
+  background: linear-gradient(135deg, var(--purple), var(--orange));
+  color: white;
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--purple);
+  border: 1px solid rgba(95, 61, 196, 0.18);
+}
+
+.btn-approve {
+  background: #6e8d46;
+  color: white;
+}
+
+.btn-reject {
+  background: #d8472f;
+  color: white;
+}
+
+.role-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.role-options label {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.alert {
+  background: rgba(244, 140, 42, 0.12);
+  border: 1px solid rgba(244, 140, 42, 0.28);
+  color: #7d4517;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.hint {
+  color: var(--muted);
+  margin-top: 16px;
+  font-size: 0.94rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+thead th {
+  text-align: left;
+  padding: 14px 12px;
+  background: rgba(95, 61, 196, 0.08);
+  color: var(--purple);
+}
+
+tbody td {
+  padding: 14px 12px;
+  border-top: 1px solid rgba(95, 61, 196, 0.1);
+  color: var(--muted);
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+}
+
+.status {
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.status.pending {
+  color: #9f6fd5;
+  background: rgba(95, 61, 196, 0.1);
+}
+
+.status.approved {
+  color: #2f6f46;
+  background: rgba(110, 141, 70, 0.12);
+}
+
+.status.rejected {
+  color: #a3332a;
+  background: rgba(211, 71, 47, 0.12);
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.small-text {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

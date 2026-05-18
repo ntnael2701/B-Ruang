@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B-Ruang Login</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="container login-page">
+      <div class="card auth-card">
+        <h1>B-Ruang</h1>
+        <p>Login sebagai Mahasiswa atau Admin untuk mengelola booking ruangan Undip.</p>
+
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
+
+        <form action="/login" method="post" class="login-form">
+          <label>Email</label>
+          <input type="email" name="email" required placeholder="example@undip.ac.id" />
+
+          <label>Password</label>
+          <input type="password" name="password" required placeholder="Password" />
+
+          <label>Login sebagai</label>
+          <div class="role-options">
+            <label><input type="radio" name="role" value="mahasiswa" checked /> Mahasiswa</label>
+            <label><input type="radio" name="role" value="admin" /> Admin</label>
+          </div>
+
+          <button type="submit" class="btn">Masuk</button>
+        </form>
+
+        <div class="hint">
+          <p>Contoh akun mahasiswa: <strong>mahasiswa@undip.ac.id</strong> / <strong>mahasiswa123</strong></p>
+          <p>Contoh akun admin: <strong>admin@undip.ac.id</strong> / <strong>admin123</strong></p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,5 +1,39 @@
 # B-Ruang
-Program booking ruangan kampus berbasis digital
-khdbskdfbsf
-hauajihza
-natanael ganteng idaman pak firman
+
+Web booking ruangan Undip untuk acara dengan sistem login mahasiswa dan admin.
+
+## Fitur Utama
+
+- Login wajib untuk mahasiswa dan admin
+- Mahasiswa mengajukan booking ruangan dengan pilihan jam
+- Admin menerima atau menolak permintaan booking
+- Menampilkan luas ruangan, kapasitas ruangan, dan status booking
+- Tema visual berwarna ungu dan oranye
+
+## Cara Menjalankan
+
+1. Buka terminal di folder proyek ini.
+2. Install dependensi:
+   ```bash
+   npm install
+   ```
+3. Jalankan aplikasi:
+   ```bash
+   npm start
+   ```
+4. Buka browser dan akses:
+   ```
+   http://localhost:3000
+   ```
+
+## Akun Contoh
+
+- Mahasiswa: `mahasiswa@undip.ac.id` / `mahasiswa123`
+- Admin: `admin@undip.ac.id` / `admin123`
+
+## Struktur Proyek
+
+- `server.js` - backend Express + SQLite
+- `views/` - halaman EJS untuk login, mahasiswa, dan admin
+- `public/css/style.css` - styling tema ungu-oranye
+- `data/` - database SQLite otomatis dibuat saat pertama dijalankan
