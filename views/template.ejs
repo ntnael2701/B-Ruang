@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Template Surat - B-Ruang</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <style>
+      .letter-wrap {
+        max-width: 800px;
+        margin: 28px auto;
+        background: white;
+        padding: 36px 48px;
+        border-radius: 8px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+        color: #111;
+        font-family: 'Times New Roman', Times, serif;
+      }
+      .letter-head { text-align: left; margin-bottom: 18px; }
+      .letter-title { text-align: center; font-weight: 700; margin: 8px 0 18px; }
+      .letter-body { line-height: 1.6; font-size: 1rem; }
+      .letter-foot { margin-top: 36px; }
+      .print-actions { display:flex; gap:10px; justify-content:flex-end; margin: 10px 0 0; }
+      @media print {
+        body { background: #fff; }
+        .print-actions { display: none; }
+        .container { padding-top: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="page-header">
+        <div>
+          <h1>B-Ruang</h1>
+          <p>Template surat permohonan penggunaan ruangan.</p>
+        </div>
+        <div class="header-actions">
+          <span>Halo, <strong><%= user.name %></strong></span>
+          <a href="/student" class="btn btn-secondary">Kembali</a>
+          <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="print-actions">
+          <button class="btn" onclick="window.print()">Download / Save as PDF</button>
+          <a class="btn btn-secondary" href="/download-template">Download .doc</a>
+        </div>
+
+        <div class="letter-wrap" id="letterContent">
+          <div class="letter-head">
+            <div>Universitas Diponegoro</div>
+            <div>Fakultas ...</div>
+            <div>Tanggal: ______________________</div>
+          </div>
+
+          <div class="letter-title">SURAT PERMOHONAN PENGGUNAAN RUANGAN</div>
+
+          <div class="letter-body">
+            <p>Kepada Yth.<br>Kepala Departemen / Ketua Jurusan<br>Fakultas ...<br>Universitas Diponegoro</p>
+
+            <p>Perihal: Permohonan Penggunaan Ruangan</p>
+
+            <p>Yang bertanda tangan di bawah ini:</p>
+            <p>Nama : ____________________________<br>
+            NIM  : ____________________________<br>
+            Program Studi : ____________________<br>
+            No. HP : __________________________
+            </p>
+
+            <p>Dengan ini mengajukan permohonan penggunaan ruangan dengan rincian sebagai berikut:</p>
+            <p>Nama Ruang : _______________________<br>
+            Tanggal    : _______________________<br>
+            Jam Mulai  : ________  Jam Selesai: ________<br>
+            Keperluan  : _______________________<br>
+            Jumlah Peserta : ___________________
+            </p>
+
+            <p>Kami mohon persetujuan Kepala Departemen dan Dekanat untuk penggunaan ruangan tersebut.</p>
+
+            <div class="letter-foot">
+              <p>Hormat kami,</p>
+              <p>(Nama Pemohon) ____________________</p>
+              <p>(NIM) ____________________________</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

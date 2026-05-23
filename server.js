@@ -90,6 +90,18 @@ function initDatabase() {
 
 initDatabase();
 
+// Migrate bookings table to include approval steps if missing
+db.all(`PRAGMA table_info(bookings)`, [], (err, cols) => {
+  if (err) return console.error(err);
+  const names = cols.map(c => c.name);
+  if (!names.includes('hod_status')) {
+    db.run(`ALTER TABLE bookings ADD COLUMN hod_status TEXT DEFAULT 'Pending'`);
+  }
+  if (!names.includes('dean_status')) {
+    db.run(`ALTER TABLE bookings ADD COLUMN dean_status TEXT DEFAULT 'Pending'`);
+  }
+});
+
 app.get('/', (req, res) => {
   if (req.session.user) {
     return res.redirect(req.session.user.role === 'admin' ? '/admin' : '/student');
@@ -136,8 +148,8 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
   const userName = req.session.user.name;
   const userEmail = req.session.user.email;
 
-  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, status, hod_status, dean_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
     [userName, userEmail, room_id, date, start_time, end_time, purpose], function (err) {
       if (err) return res.send('Gagal membuat permintaan booking.');
       res.redirect('/student');
@@ -146,6 +158,7 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
 
 app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
   db.all(`SELECT b.id, b.user_name, b.user_email, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name, r.area, r.capacity
+          , b.hod_status, b.dean_status
           FROM bookings b
           LEFT JOIN rooms r ON b.room_id = r.id
           ORDER BY b.created_at DESC`, [], (err, bookings) => {
@@ -154,13 +167,66 @@ app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
   });
 });
 
+app.get('/map', ensureLoggedIn, (req, res) => {
+  // show whether rooms have approved bookings today
+  db.all(`SELECT r.id, r.name, r.area, r.capacity,
+          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = date('now')) AS booked_today
+          FROM rooms r`, [], (err, rooms) => {
+    if (err) return res.send('Gagal memuat peta ruangan.');
+    // simple hardcoded coordinates for rooms (centered on Universitas Diponegoro area)
+    const center = [-6.9685, 110.4095];
+    const coordsMap = {
+      'Ruang Seminar A': [-6.9682, 110.4092],
+      'Ruang Kelas B': [-6.9687, 110.4098],
+      'Ruang Rapat C': [-6.9691, 110.4101]
+    };
+
+    const roomsWithCoords = rooms.map(r => ({
+      ...r,
+      coords: coordsMap[r.name] || center
+    }));
+
+    res.render('map', { user: req.session.user, rooms: roomsWithCoords, center });
+  });
+});
+
+app.get('/download-template', ensureLoggedIn, (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'files', 'template_surat.doc');
+  res.download(filePath, 'template_surat.doc');
+});
+
+app.get('/template', ensureLoggedIn, (req, res) => {
+  // render preview of the letter template (HTML styled for printing/PDF)
+  res.render('template', { user: req.session.user });
+});
+
 app.post('/admin/decision', ensureLoggedIn, ensureRole('admin'), (req, res) => {
   const { booking_id, action } = req.body;
-  const status = action === 'approve' ? 'Approved' : 'Rejected';
-  db.run(`UPDATE bookings SET status = ? WHERE id = ?`, [status, booking_id], function (err) {
-    if (err) return res.send('Gagal memperbarui status booking.');
+  if (action === 'approve') {
+    // as admin page acts as HOD approval: set hod_status to Approved and move to dean
+    db.run(`UPDATE bookings SET hod_status = 'Approved', status = 'Awaiting Dean' WHERE id = ?`, [booking_id], function (err) {
+      if (err) return res.send('Gagal memperbarui status booking.');
+      res.redirect('/admin');
+    });
+  } else if (action === 'reject') {
+    // reject by HOD
+    db.run(`UPDATE bookings SET hod_status = 'Rejected', status = 'Rejected' WHERE id = ?`, [booking_id], function (err) {
+      if (err) return res.send('Gagal memperbarui status booking.');
+      res.redirect('/admin');
+    });
+  } else if (action === 'dean_approve') {
+    db.run(`UPDATE bookings SET dean_status = 'Approved', status = 'Approved' WHERE id = ?`, [booking_id], function (err) {
+      if (err) return res.send('Gagal memperbarui status booking.');
+      res.redirect('/admin');
+    });
+  } else if (action === 'dean_reject') {
+    db.run(`UPDATE bookings SET dean_status = 'Rejected', status = 'Rejected' WHERE id = ?`, [booking_id], function (err) {
+      if (err) return res.send('Gagal memperbarui status booking.');
+      res.redirect('/admin');
+    });
+  } else {
     res.redirect('/admin');
-  });
+  }
 });
 
 app.listen(PORT, () => {

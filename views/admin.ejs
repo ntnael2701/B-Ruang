@@ -15,6 +15,8 @@
         </div>
         <div class="header-actions">
           <span>Halo, <strong><%= user.name %></strong></span>
+          <a href="/map" class="btn btn-secondary">Peta Ruangan</a>
+          <a href="/download-template" class="btn btn-secondary">Download Template Surat</a>
           <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
       </header>
@@ -47,14 +49,22 @@
                   <td><%= booking.purpose %></td>
                   <td class="status <%= booking.status.toLowerCase() %>"><%= booking.status %></td>
                   <td>
-                    <% if (booking.status === 'Pending') { %>
+                    <% if (!booking.hod_status || booking.hod_status === 'Pending') { %>
+                      <!-- HOD decision -->
                       <form class="inline-form" action="/admin/decision" method="post">
                         <input type="hidden" name="booking_id" value="<%= booking.id %>" />
-                        <button type="submit" name="action" value="approve" class="btn btn-approve">Setujui</button>
+                        <button type="submit" name="action" value="approve" class="btn btn-approve">Setujui HOD</button>
                         <button type="submit" name="action" value="reject" class="btn btn-reject">Tolak</button>
                       </form>
+                    <% } else if (booking.hod_status === 'Approved' && (!booking.dean_status || booking.dean_status === 'Pending')) { %>
+                      <!-- Dean decision -->
+                      <form class="inline-form" action="/admin/decision" method="post">
+                        <input type="hidden" name="booking_id" value="<%= booking.id %>" />
+                        <button type="submit" name="action" value="dean_approve" class="btn btn-approve">Setujui Dekanat</button>
+                        <button type="submit" name="action" value="dean_reject" class="btn btn-reject">Tolak Dekanat</button>
+                      </form>
                     <% } else { %>
-                      <span class="small-text">Selesai</span>
+                      <span class="small-text"><%= booking.status %></span>
                     <% } %>
                   </td>
                 </tr>
