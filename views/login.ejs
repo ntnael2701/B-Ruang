@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
+    <div class="splash-overlay" id="splashOverlay">
+      <div class="splash-card">
+        <div class="splash-logo">
+          <span>B</span>
+        </div>
+        <h1 class="splash-title">B-Ruang</h1>
+        <p class="splash-subtitle">Platform booking ruangan Undip dengan sentuhan desain modern dan energi Gen Z.</p>
+        <div class="splash-pulse">Sedang mempersiapkan ruang kreativitasmu...</div>
+      </div>
+    </div>
+
     <div class="container login-page">
       <div class="card auth-card">
         <h1>B-Ruang</h1>
@@ -38,5 +49,17 @@
         </div>
       </div>
     </div>
+
+    <script>
+      window.addEventListener('load', function () {
+        var overlay = document.getElementById('splashOverlay');
+        setTimeout(function () {
+          overlay.classList.add('hide');
+          setTimeout(function () {
+            overlay.style.display = 'none';
+          }, 900);
+        }, 1100);
+      });
+    </script>
   </body>
 </html>
