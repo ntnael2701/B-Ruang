@@ -61,8 +61,20 @@ function initDatabase() {
       end_time TEXT,
       purpose TEXT,
       status TEXT DEFAULT 'Pending',
+      hod_status TEXT DEFAULT 'Pending',
+      dean_status TEXT DEFAULT 'Pending',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(room_id) REFERENCES rooms(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_email TEXT,
+      booking_id INTEGER,
+      message TEXT,
+      status TEXT DEFAULT 'Unread',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(booking_id) REFERENCES bookings(id)
     )`);
 
     const seedUsers = [
@@ -138,7 +150,15 @@ app.get('/student', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
             WHERE b.user_email = ?
             ORDER BY b.created_at DESC`, [req.session.user.email], (err2, bookings) => {
       if (err2) return res.send('Gagal memuat pemesanan.');
-      res.render('student', { user: req.session.user, rooms, bookings });
+      db.run(`UPDATE notifications SET status = 'Read' WHERE user_email = ? AND status = 'Unread'`, [req.session.user.email], () => {
+        db.all(`SELECT id, booking_id, message, status, created_at
+                FROM notifications
+                WHERE user_email = ?
+                ORDER BY created_at DESC`, [req.session.user.email], (err3, notifications) => {
+          if (err3) return res.send('Gagal memuat notifikasi.');
+          res.render('student', { user: req.session.user, rooms, bookings, notifications });
+        });
+      });
     });
   });
 });
@@ -202,26 +222,37 @@ app.get('/template', ensureLoggedIn, (req, res) => {
 
 app.post('/admin/decision', ensureLoggedIn, ensureRole('admin'), (req, res) => {
   const { booking_id, action } = req.body;
+
+  function sendNotification(message) {
+    db.get(`SELECT user_email FROM bookings WHERE id = ?`, [booking_id], (err, row) => {
+      if (!err && row) {
+        db.run(`INSERT INTO notifications (user_email, booking_id, message) VALUES (?, ?, ?)`, [row.user_email, booking_id, message]);
+      }
+    });
+  }
+
   if (action === 'approve') {
-    // as admin page acts as HOD approval: set hod_status to Approved and move to dean
     db.run(`UPDATE bookings SET hod_status = 'Approved', status = 'Awaiting Dean' WHERE id = ?`, [booking_id], function (err) {
       if (err) return res.send('Gagal memperbarui status booking.');
+      sendNotification('Pengajuan Anda disetujui oleh HOD dan sedang menunggu keputusan Dekanat.');
       res.redirect('/admin');
     });
   } else if (action === 'reject') {
-    // reject by HOD
     db.run(`UPDATE bookings SET hod_status = 'Rejected', status = 'Rejected' WHERE id = ?`, [booking_id], function (err) {
       if (err) return res.send('Gagal memperbarui status booking.');
+      sendNotification('Pengajuan Anda ditolak oleh HOD.');
       res.redirect('/admin');
     });
   } else if (action === 'dean_approve') {
     db.run(`UPDATE bookings SET dean_status = 'Approved', status = 'Approved' WHERE id = ?`, [booking_id], function (err) {
       if (err) return res.send('Gagal memperbarui status booking.');
+      sendNotification('Pengajuan Anda disetujui oleh Dekanat.');
       res.redirect('/admin');
     });
   } else if (action === 'dean_reject') {
     db.run(`UPDATE bookings SET dean_status = 'Rejected', status = 'Rejected' WHERE id = ?`, [booking_id], function (err) {
       if (err) return res.send('Gagal memperbarui status booking.');
+      sendNotification('Pengajuan Anda ditolak oleh Dekanat.');
       res.redirect('/admin');
     });
   } else {

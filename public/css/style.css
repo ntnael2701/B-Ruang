@@ -334,16 +334,50 @@ tbody td {
   background: rgba(211, 71, 47, 0.12);
 }
 
-.inline-form {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+  .notification-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+  }
 
-.small-text {
-  color: var(--muted);
-  font-size: 0.92rem;
-}
+  .notification-item {
+    padding: 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid rgba(95, 61, 196, 0.1);
+    box-shadow: 0 10px 24px rgba(95, 61, 196, 0.05);
+  }
+
+  .notification-item.unread {
+    border-color: rgba(244, 140, 42, 0.3);
+    background: rgba(244, 140, 42, 0.08);
+  }
+
+  .notification-item.read {
+    border-color: rgba(95, 61, 196, 0.14);
+    background: rgba(245, 242, 255, 0.8);
+  }
+
+  .notification-item p {
+    margin: 0 0 10px;
+    color: var(--text);
+  }
+
+  .notification-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .note-status {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+  }
+
 
 .login-page {
   min-height: 100vh;

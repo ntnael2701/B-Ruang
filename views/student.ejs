@@ -56,6 +56,25 @@
       </section>
 
       <section class="card">
+        <h2>Inbox Notifikasi</h2>
+        <% if (!notifications || notifications.length === 0) { %>
+          <p class="hint">Belum ada notifikasi.</p>
+        <% } else { %>
+          <div class="notification-list">
+            <% notifications.forEach(note => { %>
+              <div class="notification-item <%= note.status.toLowerCase() %>">
+                <p><%= note.message %></p>
+                <div class="notification-meta">
+                  <span><%= note.created_at %></span>
+                  <span class="note-status"><%= note.status %></span>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </section>
+
+      <section class="card">
         <h2>Status Booking Saya</h2>
         <div class="table-wrap">
           <table>
