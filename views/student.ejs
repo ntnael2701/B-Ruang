@@ -36,6 +36,9 @@
 
       <section class="card booking-card">
         <h2>Permintaan Booking</h2>
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
         <form action="/book" method="post" class="booking-form">
           <label>Ruang</label>
           <select name="room_id" required>

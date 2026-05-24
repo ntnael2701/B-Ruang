@@ -34,6 +34,28 @@ function ensureRole(role) {
   };
 }
 
+function renderStudentPage(req, res, error = null) {
+  db.all(`SELECT * FROM rooms`, [], (err, rooms) => {
+    if (err) return res.send('Gagal memuat ruangan.');
+    db.all(`SELECT b.id, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name
+            FROM bookings b
+            LEFT JOIN rooms r ON b.room_id = r.id
+            WHERE b.user_email = ?
+            ORDER BY b.created_at DESC`, [req.session.user.email], (err2, bookings) => {
+      if (err2) return res.send('Gagal memuat pemesanan.');
+      db.run(`UPDATE notifications SET status = 'Read' WHERE user_email = ? AND status = 'Unread'`, [req.session.user.email], () => {
+        db.all(`SELECT id, booking_id, message, status, created_at
+                FROM notifications
+                WHERE user_email = ?
+                ORDER BY created_at DESC`, [req.session.user.email], (err3, notifications) => {
+          if (err3) return res.send('Gagal memuat notifikasi.');
+          res.render('student', { user: req.session.user, rooms, bookings, notifications, error });
+        });
+      });
+    });
+  });
+}
+
 function initDatabase() {
   db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -142,25 +164,7 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/student', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
-  db.all(`SELECT * FROM rooms`, [], (err, rooms) => {
-    if (err) return res.send('Gagal memuat ruangan.');
-    db.all(`SELECT b.id, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name
-            FROM bookings b
-            LEFT JOIN rooms r ON b.room_id = r.id
-            WHERE b.user_email = ?
-            ORDER BY b.created_at DESC`, [req.session.user.email], (err2, bookings) => {
-      if (err2) return res.send('Gagal memuat pemesanan.');
-      db.run(`UPDATE notifications SET status = 'Read' WHERE user_email = ? AND status = 'Unread'`, [req.session.user.email], () => {
-        db.all(`SELECT id, booking_id, message, status, created_at
-                FROM notifications
-                WHERE user_email = ?
-                ORDER BY created_at DESC`, [req.session.user.email], (err3, notifications) => {
-          if (err3) return res.send('Gagal memuat notifikasi.');
-          res.render('student', { user: req.session.user, rooms, bookings, notifications });
-        });
-      });
-    });
-  });
+  renderStudentPage(req, res);
 });
 
 app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
@@ -168,10 +172,21 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
   const userName = req.session.user.name;
   const userEmail = req.session.user.email;
 
+  if (!room_id || !date || !start_time || !end_time || !purpose) {
+    return renderStudentPage(req, res, 'Mohon isi semua field sebelum mengirim permintaan booking.');
+  }
+
+  if (start_time >= end_time) {
+    return renderStudentPage(req, res, 'Jam selesai harus lebih besar dari jam mulai.');
+  }
+
   db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, status, hod_status, dean_status)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
     [userName, userEmail, room_id, date, start_time, end_time, purpose], function (err) {
-      if (err) return res.send('Gagal membuat permintaan booking.');
+      if (err) {
+        console.error('Booking error:', err);
+        return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
+      }
       res.redirect('/student');
     });
 });
