@@ -32,13 +32,14 @@
                 <th>Tanggal</th>
                 <th>Jam</th>
                 <th>Keperluan</th>
+                <th>Surat</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <% if (bookings.length === 0) { %>
-                <tr><td colspan="7" class="empty">Belum ada permintaan booking.</td></tr>
+                <tr><td colspan="8" class="empty">Belum ada permintaan booking.</td></tr>
               <% } %>
               <% bookings.forEach(booking => { %>
                 <tr>
@@ -47,6 +48,13 @@
                   <td><%= booking.date %></td>
                   <td><%= booking.start_time %> - <%= booking.end_time %></td>
                   <td><%= booking.purpose %></td>
+                  <td>
+                    <% if (booking.letter_file) { %>
+                      <a href="/download-surat/<%= booking.id %>" target="_blank" class="btn btn-secondary">Download Surat</a>
+                    <% } else { %>
+                      <span class="small-text">Tidak ada surat</span>
+                    <% } %>
+                  </td>
                   <td class="status <%= booking.status.toLowerCase() %>"><%= booking.status %></td>
                   <td>
                     <% if (!booking.hod_status || booking.hod_status === 'Pending') { %>

@@ -39,7 +39,7 @@
         <% if (typeof error !== 'undefined' && error) { %>
           <div class="alert"><%= error %></div>
         <% } %>
-        <form action="/book" method="post" class="booking-form">
+        <form action="/book" method="post" enctype="multipart/form-data" class="booking-form">
           <label>Ruang</label>
           <select name="room_id" required>
             <% rooms.forEach(room => { %>
@@ -54,6 +54,8 @@
           <input type="time" name="end_time" required />
           <label>Keperluan acara</label>
           <textarea name="purpose" rows="3" required placeholder="Contoh: Seminar, diskusi organisasi..."></textarea>
+          <label>Unggah surat permohonan (.doc, .docx, .pdf)</label>
+          <input type="file" name="letter_pdf" accept=".doc,.docx,.pdf" required />
           <button type="submit" class="btn">Kirim Permintaan</button>
         </form>
       </section>

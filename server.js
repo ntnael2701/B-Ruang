@@ -3,13 +3,36 @@ const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data', 'b-ruang.db');
+const uploadFolder = path.join(__dirname, 'public', 'files', 'surat');
 
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+fs.mkdirSync(uploadFolder, { recursive: true });
 const db = new sqlite3.Database(DB_PATH);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadFolder),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf'];
+    if (allowedTypes.includes(file.mimetype) && path.extname(file.originalname).toLowerCase() === '.pdf') {
+      return cb(null, true);
+    }
+    cb(new Error('Hanya file PDF yang diperbolehkan.'));
+  }
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -37,7 +60,7 @@ function ensureRole(role) {
 function renderStudentPage(req, res, error = null) {
   db.all(`SELECT * FROM rooms`, [], (err, rooms) => {
     if (err) return res.send('Gagal memuat ruangan.');
-    db.all(`SELECT b.id, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name
+    db.all(`SELECT b.id, b.date, b.start_time, b.end_time, b.purpose, b.status, b.letter_file, r.name AS room_name
             FROM bookings b
             LEFT JOIN rooms r ON b.room_id = r.id
             WHERE b.user_email = ?
@@ -82,6 +105,7 @@ function initDatabase() {
       start_time TEXT,
       end_time TEXT,
       purpose TEXT,
+      letter_file TEXT,
       status TEXT DEFAULT 'Pending',
       hod_status TEXT DEFAULT 'Pending',
       dean_status TEXT DEFAULT 'Pending',
@@ -134,6 +158,9 @@ db.all(`PRAGMA table_info(bookings)`, [], (err, cols) => {
   if (!names.includes('dean_status')) {
     db.run(`ALTER TABLE bookings ADD COLUMN dean_status TEXT DEFAULT 'Pending'`);
   }
+  if (!names.includes('letter_file')) {
+    db.run(`ALTER TABLE bookings ADD COLUMN letter_file TEXT`);
+  }
 });
 
 app.get('/', (req, res) => {
@@ -167,22 +194,34 @@ app.get('/student', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
   renderStudentPage(req, res);
 });
 
-app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
+app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res, next) => {
+  upload.single('letter_pdf')(req, res, function (err) {
+    if (err) {
+      return renderStudentPage(req, res, err.message || 'Terjadi kesalahan saat mengunggah surat. Pastikan file PDF.');
+    }
+    next();
+  });
+}, (req, res) => {
   const { room_id, date, start_time, end_time, purpose } = req.body;
   const userName = req.session.user.name;
   const userEmail = req.session.user.email;
+  const letterFile = req.file && req.file.filename;
 
   if (!room_id || !date || !start_time || !end_time || !purpose) {
     return renderStudentPage(req, res, 'Mohon isi semua field sebelum mengirim permintaan booking.');
+  }
+
+  if (!letterFile) {
+    return renderStudentPage(req, res, 'Mohon unggah surat PDF sebelum mengirim permintaan booking.');
   }
 
   if (start_time >= end_time) {
     return renderStudentPage(req, res, 'Jam selesai harus lebih besar dari jam mulai.');
   }
 
-  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, status, hod_status, dean_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
-    [userName, userEmail, room_id, date, start_time, end_time, purpose], function (err) {
+  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, letter_file, status, hod_status, dean_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
+    [userName, userEmail, room_id, date, start_time, end_time, purpose, letterFile], function (err) {
       if (err) {
         console.error('Booking error:', err);
         return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
@@ -192,7 +231,7 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
 });
 
 app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
-  db.all(`SELECT b.id, b.user_name, b.user_email, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name, r.area, r.capacity
+  db.all(`SELECT b.id, b.user_name, b.user_email, b.date, b.start_time, b.end_time, b.purpose, b.status, r.name AS room_name, r.area, r.capacity, b.letter_file
           , b.hod_status, b.dean_status
           FROM bookings b
           LEFT JOIN rooms r ON b.room_id = r.id
