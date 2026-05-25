@@ -318,34 +318,32 @@ app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
 });
 
 app.get('/map', ensureLoggedIn, (req, res) => {
-  // Get selected date from query parameter, default to today
-  const selectedDate = req.query.date || new Date().toISOString().split('T')[0];
-  
-  // show whether rooms have approved bookings on selected date with time details
+  // show whether rooms have approved bookings today, with booking times
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   db.all(`SELECT r.id, r.name, r.area, r.capacity,
-          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = ?) AS booked_count
-          FROM rooms r`, [selectedDate], (err, rooms) => {
+          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = ?) AS booked_today
+          FROM rooms r`, [today], (err, rooms) => {
     if (err) return res.send('Gagal memuat peta ruangan.');
     
-    // Get booking times for each room on selected date
-    db.all(`SELECT b.room_id, b.start_time, b.end_time, b.purpose, b.user_name
+    // get all approved bookings for today grouped by room
+    db.all(`SELECT b.room_id, b.start_time, b.end_time, b.user_name, b.purpose
             FROM bookings b
             WHERE b.status = 'Approved' AND b.date = ?
-            ORDER BY b.start_time ASC`, [selectedDate], (err2, bookings) => {
-      if (err2) return res.send('Gagal memuat jadwal booking.');
+            ORDER BY b.room_id, b.start_time`, [today], (err2, bookings) => {
+      if (err2) return res.send('Gagal memuat booking.');
       
-      // Group bookings by room_id
+      // group bookings by room_id
       const bookingsByRoom = {};
       bookings.forEach(b => {
         if (!bookingsByRoom[b.room_id]) bookingsByRoom[b.room_id] = [];
         bookingsByRoom[b.room_id].push({
           start_time: b.start_time,
           end_time: b.end_time,
-          purpose: b.purpose,
-          user_name: b.user_name
+          user_name: b.user_name,
+          purpose: b.purpose
         });
       });
-      
+
       // simple hardcoded coordinates for rooms (centered on Universitas Diponegoro area)
       const center = [-6.9685, 110.4095];
       const coordsMap = {
@@ -362,13 +360,7 @@ app.get('/map', ensureLoggedIn, (req, res) => {
         bookings: bookingsByRoom[r.id] || []
       }));
 
-      res.render('map', {
-        user: req.session.user,
-        rooms: roomsWithCoords,
-        center,
-        selectedDate,
-        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
-      });
+      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, selectedDate });
     });
   });
 });

@@ -11,7 +11,7 @@
       <header class="page-header">
         <div>
           <h1>Peta Ruangan</h1>
-          <p>Lihat ruangan yang kosong atau sudah dibooking.</p>
+          <p>Lihat ruangan yang kosong atau sudah dibooking hari ini.</p>
         </div>
         <div class="header-actions">
           <span>Halo, <strong><%= user.name %></strong></span>
@@ -19,14 +19,6 @@
           <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
       </header>
-
-      <section class="card" style="margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background-color: rgba(95, 61, 196, 0.05); border-radius: 12px;">
-          <label for="dateFilter" style="font-weight: 600; white-space: nowrap;">Pilih Tanggal:</label>
-          <input type="date" id="dateFilter" value="<%= selectedDate %>" style="padding: 8px 12px; border: 1px solid rgba(95, 61, 196, 0.18); border-radius: 8px; font-size: 1em;">
-          <span id="dateInfo" style="color: #666; font-size: 0.95em;"></span>
-        </div>
-      </section>
 
       <section class="card">
         <div id="map" class="map-container"></div>
@@ -56,20 +48,17 @@
             <tbody>
               <% rooms.forEach(room => { %>
                 <% if (room.bookings && room.bookings.length > 0) { %>
-                  <% room.bookings.forEach((booking, index) => { %>
-                    <tr class="booking-row">
-                      <td><%= index === 0 ? room.name : '' %></td>
-                      <td><%= index === 0 ? room.area : '' %></td>
-                      <td><%= booking.start_time %> - <%= booking.end_time %></td>
-                      <td class="status rejected">Booked</td>
-                    </tr>
-                  <% }) %>
+                  <div class="status rejected">Terbooking</div>
+                  <div style="margin-top: 10px; padding: 8px; background-color: rgba(216, 71, 47, 0.1); border-radius: 6px; font-size: 0.9em;">
+                    <strong>Jam yang Terbooking:</strong>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                      <% room.bookings.forEach(booking => { %>
+                        <li><%= booking.start_time %> - <%= booking.end_time %></li>
+                      <% }); %>
+                    </ul>
+                  </div>
                 <% } else { %>
-                  <tr class="available-row">
-                    <td><%= room.name %></td>
-                    <td><%= room.area %></td>
-                    <td colspan="2">Tersedia sepanjang hari</td>
-                  </tr>
+                  <div class="status approved">Tersedia</div>
                 <% } %>
               <% }); %>
             </tbody>
@@ -82,101 +71,61 @@
       <script src="https://maps.googleapis.com/maps/api/js?key=<%= googleMapsApiKey %>&callback=initMap" async defer></script>
     <% } %>
     <script>
+      // Format tanggal untuk display
       const selectedDateInput = document.getElementById('dateFilter');
       const dateInfo = document.getElementById('dateInfo');
-      const mapContainer = document.getElementById('map');
-      const googleMapsApiKey = <%- JSON.stringify(googleMapsApiKey) %>;
-      const center = <%= JSON.stringify(center) %>;
-      const rooms = <%= JSON.stringify(rooms) %>;
-      const interactiveButtons = document.querySelectorAll('.btn, .btn-secondary, .btn-approve, .btn-reject');
-
+      
       function formatDate(dateStr) {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', options);
       }
-
+      
       function updateDateInfo() {
         dateInfo.textContent = '(' + formatDate(selectedDateInput.value) + ')';
       }
-
-      function animateButtonClick(event) {
-        const button = event.currentTarget;
-        button.classList.add('btn-clicked');
-        setTimeout(() => button.classList.remove('btn-clicked'), 320);
-      }
-
-      interactiveButtons.forEach(button => {
-        button.addEventListener('click', animateButtonClick);
-      });
-
+      
       updateDateInfo();
-
+      
       selectedDateInput.addEventListener('change', function() {
         updateDateInfo();
+        // Reload peta dengan tanggal baru
         window.location.href = '/map?date=' + this.value;
       });
+      
+      // initialize map
+      var center = <%= JSON.stringify(center) %>;
+      var rooms = <%= JSON.stringify(rooms) %>;
 
-      function createRoomPopup(room) {
-        let content = '<div style="font-family: Arial, sans-serif; line-height: 1.4; max-width: 260px;">';
-        content += '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
-        if (room.bookings && room.bookings.length > 0) {
-          content += '<br><strong style="color: #d8472f;">Jam Terbooking:</strong><ul style="margin: 6px 0 0; padding-left: 16px; font-size: 0.92em;">';
-          room.bookings.forEach(booking => {
-            content += '<li>' + booking.start_time + ' - ' + booking.end_time + '</li>';
+      var map = L.map('map').setView(center, 17);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      rooms.forEach(function(room) {
+        var isBooked = room.bookings && room.bookings.length > 0;
+        var marker = L.circleMarker(room.coords, {
+          radius: 10,
+          color: isBooked ? '#d8472f' : '#2f6f46',
+          fillColor: isBooked ? '#f8d7d5' : '#dff3e6',
+          fillOpacity: 0.9
+        }).addTo(map);
+        
+        // Build popup content with booking times
+        var popupContent = '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
+        
+        if (isBooked && room.bookings.length > 0) {
+          popupContent += '<br><strong style="color: #d8472f;">Jam Terbooking:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">';
+          room.bookings.forEach(function(booking) {
+            popupContent += '<li>' + booking.start_time + ' - ' + booking.end_time + '</li>';
           });
-          content += '</ul>';
+          popupContent += '</ul>';
         } else {
-          content += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
+          popupContent += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
         }
-        content += '</div>';
-        return content;
-      }
-
-      function renderFallbackMap() {
-        mapContainer.innerHTML = '<iframe class="map-iframe" src="https://www.google.com/maps?q=Universitas+Diponegoro+Semarang&z=17&output=embed" allowfullscreen loading="lazy"></iframe>';
-      }
-
-      function initMap() {
-        if (!googleMapsApiKey) {
-          renderFallbackMap();
-          return;
-        }
-
-        const map = new google.maps.Map(mapContainer, {
-          center: { lat: center[0], lng: center[1] },
-          zoom: 17,
-          mapTypeId: 'roadmap'
-        });
-
-        rooms.forEach(room => {
-          const isBooked = room.bookings && room.bookings.length > 0;
-          const marker = new google.maps.Marker({
-            position: { lat: room.coords[0], lng: room.coords[1] },
-            map,
-            title: room.name,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 9,
-              fillColor: isBooked ? '#d8472f' : '#2f6f46',
-              fillOpacity: 0.9,
-              strokeColor: isBooked ? '#9f2f1a' : '#1f4f2d',
-              strokeWeight: 2
-            }
-          });
-
-          const infoWindow = new google.maps.InfoWindow({
-            content: createRoomPopup(room)
-          });
-
-          marker.addListener('click', () => infoWindow.open(map, marker));
-        });
-      }
-
-      if (googleMapsApiKey) {
-        window.initMap = initMap;
-      } else {
-        renderFallbackMap();
-      }
+        
+        marker.bindPopup(popupContent);
+      });
     </script>
   </body>
 </html>
