@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Peta Ruangan - B-Ruang</title>
     <link rel="stylesheet" href="/css/style.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   </head>
   <body>
     <div class="container">
@@ -27,7 +26,7 @@
           <input type="date" id="datePicker" value="<%= today %>" />
           <small style="color:#666;">(Tampilkan jadwal booking untuk tanggal terpilih)</small>
         </div>
-        <div id="map" class="map-container"></div>
+        <!-- Map removed per user request -->
         <div style="display:flex; gap:12px; margin: 10px 0; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="width:12px; height:12px; border-radius:50%; background:#d8472f; display:inline-block;"></span>
@@ -67,52 +66,10 @@
       </section>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
-      // initialize map
-      var center = <%= JSON.stringify(center) %>;
-      var rooms = <%= JSON.stringify(rooms) %>;
-      var map = L.map('map').setView(center, 17);
-      var currentMarkers = [];
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      function buildPopup(room) {
-        var popupContent = '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
-        if (room.bookings && room.bookings.length > 0) {
-          popupContent += '<div style="margin-top: 8px; padding: 8px; background: #fff8f0; border-radius: 4px;">';
-          popupContent += '<strong style="color: #d8472f;">Jadwal booking:</strong><br>';
-          room.bookings.forEach(function(booking) {
-            popupContent += booking.start_time + ' - ' + booking.end_time + '<br>';
-          });
-          popupContent += '</div>';
-        } else {
-          popupContent += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
-        }
-        return popupContent;
-      }
-
-      function renderMarkers(roomsData) {
-        currentMarkers.forEach(function(marker) {
-          map.removeLayer(marker);
-        });
-        currentMarkers = [];
-
-        roomsData.forEach(function(room) {
-          var isBooked = room.bookings && room.bookings.length > 0;
-          var marker = L.circleMarker(room.coords, {
-            radius: 10,
-            color: isBooked ? '#d8472f' : '#2f6f46',
-            fillColor: isBooked ? '#f8d7d5' : '#dff3e6',
-            fillOpacity: 0.9
-          }).addTo(map);
-          marker.bindPopup(buildPopup(room));
-          currentMarkers.push(marker);
-        });
-      }
+      // simplified: no map, only render rooms grid
+      var center = <%- JSON.stringify(center) %>;
+      var rooms = <%- JSON.stringify(rooms) %>;
 
       function renderRoomsGrid(roomsData) {
         var grid = document.getElementById('roomsGrid');
@@ -147,7 +104,6 @@
             return response.json();
           })
           .then(function(data) {
-            renderMarkers(data.rooms);
             renderRoomsGrid(data.rooms);
           })
           .catch(function(error) {
