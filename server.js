@@ -13,6 +13,7 @@ const uploadFolder = path.join(__dirname, 'public', 'files', 'surat');
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
 fs.mkdirSync(uploadFolder, { recursive: true });
 const db = new sqlite3.Database(DB_PATH);
+db.run('PRAGMA foreign_keys = ON');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadFolder),
@@ -57,9 +58,41 @@ function ensureRole(role) {
   };
 }
 
+function uniqueRoomsByName(roomRows) {
+  const roomsMap = new Map();
+  roomRows.forEach(room => {
+    if (!roomsMap.has(room.name)) {
+      roomsMap.set(room.name, room);
+    }
+  });
+  return Array.from(roomsMap.values());
+}
+
+function mergeRoomBookings(rooms, bookingsByRoom) {
+  const roomsMap = new Map();
+  rooms.forEach(room => {
+    if (!roomsMap.has(room.name)) {
+      roomsMap.set(room.name, { ...room, roomIds: [room.id] });
+    } else {
+      roomsMap.get(room.name).roomIds.push(room.id);
+    }
+  });
+  return Array.from(roomsMap.values()).map(room => {
+    const mergedBookings = [];
+    room.roomIds.forEach(id => {
+      if (bookingsByRoom[id]) {
+        mergedBookings.push(...bookingsByRoom[id]);
+      }
+    });
+    delete room.roomIds;
+    return { ...room, bookings: mergedBookings };
+  });
+}
+
 function renderStudentPage(req, res, error = null) {
   db.all(`SELECT * FROM rooms`, [], (err, rooms) => {
     if (err) return res.send('Gagal memuat ruangan.');
+    const uniqueRooms = uniqueRoomsByName(rooms);
     db.all(`SELECT b.id, b.date, b.start_time, b.end_time, b.purpose, b.status, b.letter_file, r.name AS room_name
             FROM bookings b
             LEFT JOIN rooms r ON b.room_id = r.id
@@ -72,7 +105,7 @@ function renderStudentPage(req, res, error = null) {
                 WHERE user_email = ?
                 ORDER BY created_at DESC`, [req.session.user.email], (err3, notifications) => {
           if (err3) return res.send('Gagal memuat notifikasi.');
-          res.render('student', { user: req.session.user, rooms, bookings, notifications, error });
+          res.render('student', { user: req.session.user, rooms: uniqueRooms, bookings, notifications, error });
         });
       });
     });
@@ -91,7 +124,7 @@ function initDatabase() {
 
     db.run(`CREATE TABLE IF NOT EXISTS rooms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
+      name TEXT UNIQUE,
       area TEXT,
       capacity INTEGER
     )`);
@@ -134,14 +167,35 @@ function initDatabase() {
       { name: 'Ruang Rapat C', area: '30 m²', capacity: 20 }
     ];
 
-    seedUsers.forEach(user => {
-      db.run(`INSERT OR IGNORE INTO users (email, name, password, role) VALUES (?, ?, ?, ?)`,
-        [user.email, user.name, user.password, user.role]);
-    });
+    db.all(`SELECT name, MIN(id) AS keep_id, GROUP_CONCAT(id) AS ids FROM rooms GROUP BY name HAVING COUNT(*) > 1`, [], (err, duplicates) => {
+      if (err) return console.error(err);
 
-    seedRooms.forEach(room => {
-      db.run(`INSERT OR IGNORE INTO rooms (name, area, capacity) VALUES (?, ?, ?)`,
-        [room.name, room.area, room.capacity]);
+      duplicates.forEach(item => {
+        const ids = item.ids.split(',').map(id => Number(id)).filter(id => id !== item.keep_id);
+        if (ids.length === 0) return;
+
+        const placeholders = ids.map(() => '?').join(',');
+        db.run(`UPDATE bookings SET room_id = ? WHERE room_id IN (${placeholders})`, [item.keep_id, ...ids], err2 => {
+          if (err2) console.error(err2);
+        });
+        db.run(`DELETE FROM rooms WHERE id IN (${placeholders})`, ids, err2 => {
+          if (err2) console.error(err2);
+        });
+      });
+
+      db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name)`, [], err2 => {
+        if (err2) console.error(err2);
+
+        seedUsers.forEach(user => {
+          db.run(`INSERT OR IGNORE INTO users (email, name, password, role) VALUES (?, ?, ?, ?)`,
+            [user.email, user.name, user.password, user.role]);
+        });
+
+        seedRooms.forEach(room => {
+          db.run(`INSERT OR IGNORE INTO rooms (name, area, capacity) VALUES (?, ?, ?)`,
+            [room.name, room.area, room.capacity]);
+        });
+      });
     });
   });
 }
@@ -276,10 +330,10 @@ app.get('/map', ensureLoggedIn, (req, res) => {
         'Ruang Rapat C': [-6.9691, 110.4101]
       };
 
-      const roomsWithCoords = rooms.map(r => ({
+      const roomsWithCoords = mergeRoomBookings(rooms, bookingsByRoom).map(r => ({
         ...r,
         coords: coordsMap[r.name] || center,
-        bookings: bookingsByRoom[r.id] || []
+        bookings: r.bookings || []
       }));
 
       res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, today });
