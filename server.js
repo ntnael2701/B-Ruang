@@ -96,6 +96,21 @@ function initDatabase() {
       capacity INTEGER
     )`);
 
+    // remove duplicate room rows and keep the earliest one for each name
+    db.run(`UPDATE bookings
+            SET room_id = (
+              SELECT MIN(id)
+              FROM rooms AS canonical
+              WHERE canonical.name = (
+                SELECT name FROM rooms WHERE id = bookings.room_id
+              )
+            )
+            WHERE room_id IN (
+              SELECT id FROM rooms GROUP BY name HAVING COUNT(*) > 1
+            )`);
+    db.run(`DELETE FROM rooms WHERE id NOT IN (SELECT MIN(id) FROM rooms GROUP BY name)`);
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name)`);
+
     db.run(`CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_name TEXT,

@@ -13,7 +13,7 @@
       <header class="page-header">
         <div>
           <h1>Peta Ruangan</h1>
-          <p>Lihat ruangan yang kosong atau sudah dibooking hari ini.</p>
+          <p>Lihat ruangan yang kosong atau sudah dibooking pada tanggal tertentu.</p>
         </div>
         <div class="header-actions">
           <span>Halo, <strong><%= user.name %></strong></span>
@@ -63,27 +63,19 @@
       // initialize map
       var center = <%= JSON.stringify(center) %>;
       var rooms = <%= JSON.stringify(rooms) %>;
-
       var map = L.map('map').setView(center, 17);
+      var currentMarkers = [];
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      rooms.forEach(function(room) {
-        var isBooked = room.bookings && room.bookings.length > 0;
-        var marker = L.circleMarker(room.coords, {
-          radius: 10,
-          color: isBooked ? '#d8472f' : '#2f6f46',
-          fillColor: isBooked ? '#f8d7d5' : '#dff3e6',
-          fillOpacity: 0.9
-        }).addTo(map);
-        
-        // Build popup content
+      function buildPopup(room) {
         var popupContent = '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
-        if (isBooked) {
+        if (room.bookings && room.bookings.length > 0) {
           popupContent += '<div style="margin-top: 8px; padding: 8px; background: #fff8f0; border-radius: 4px;">';
-          popupContent += '<strong style="color: #d8472f;">Jam tidak tersedia:</strong><br>';
+          popupContent += '<strong style="color: #d8472f;">Jadwal booking:</strong><br>';
           room.bookings.forEach(function(booking) {
             popupContent += booking.start_time + ' - ' + booking.end_time + '<br>';
           });
@@ -91,8 +83,75 @@
         } else {
           popupContent += 'Status: <strong>Tersedia</strong>';
         }
-        marker.bindPopup(popupContent);
+        return popupContent;
+      }
+
+      function renderMarkers(roomsData) {
+        currentMarkers.forEach(function(marker) {
+          map.removeLayer(marker);
+        });
+        currentMarkers = [];
+
+        roomsData.forEach(function(room) {
+          var isBooked = room.bookings && room.bookings.length > 0;
+          var marker = L.circleMarker(room.coords, {
+            radius: 10,
+            color: isBooked ? '#d8472f' : '#2f6f46',
+            fillColor: isBooked ? '#f8d7d5' : '#dff3e6',
+            fillOpacity: 0.9
+          }).addTo(map);
+          marker.bindPopup(buildPopup(room));
+          currentMarkers.push(marker);
+        });
+      }
+
+      function renderRoomsGrid(roomsData) {
+        var grid = document.getElementById('roomsGrid');
+        var html = '';
+        roomsData.forEach(function(room) {
+          var isBooked = room.bookings && room.bookings.length > 0;
+          html += '<div class="room-card" style="border: 1px solid rgba(0,0,0,0.04);">';
+          html += '<h3>' + room.name + '</h3>';
+          html += '<p><strong>' + room.area + '</strong> — kapasitas ' + room.capacity + ' orang</p>';
+          if (isBooked) {
+            html += '<div class="status rejected">Terbooking</div>';
+            html += '<div style="margin-top: 10px; background: #fff8f0; padding: 10px; border-radius: 8px; font-size: 12px;">';
+            html += '<strong style="color: #d8472f;">Jam yang tidak tersedia:</strong>';
+            html += '<ul style="margin: 5px 0; padding-left: 18px;">';
+            room.bookings.forEach(function(booking) {
+              html += '<li><strong>' + booking.start_time + '</strong> - <strong>' + booking.end_time + '</strong>';
+              html += '<br><span style="color: #666;">(Peminjam: ' + booking.user_name + ')</span></li>';
+            });
+            html += '</ul></div>';
+          } else {
+            html += '<div class="status approved">Tersedia sepanjang hari</div>';
+          }
+          html += '</div>';
+        });
+        grid.innerHTML = html;
+      }
+
+      function fetchBookings(date) {
+        fetch('/api/bookings?date=' + encodeURIComponent(date), { credentials: 'same-origin' })
+          .then(function(response) {
+            if (!response.ok) throw new Error('Gagal memuat jadwal');
+            return response.json();
+          })
+          .then(function(data) {
+            renderMarkers(data.rooms);
+            renderRoomsGrid(data.rooms);
+          })
+          .catch(function(error) {
+            console.error(error);
+            alert('Tidak dapat memuat jadwal booking untuk tanggal ini.');
+          });
+      }
+
+      document.getElementById('datePicker').addEventListener('change', function(event) {
+        fetchBookings(event.target.value);
       });
+
+      renderMarkers(rooms);
     </script>
   </body>
 </html>
