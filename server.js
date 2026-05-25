@@ -218,33 +218,16 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res, next) => {
   if (start_time >= end_time) {
     return renderStudentPage(req, res, 'Jam selesai harus lebih besar dari jam mulai.');
   }
-  // Check for overlapping bookings for the same room/date
-  const overlapQuery = `
-    SELECT COUNT(1) AS cnt FROM bookings
-    WHERE room_id = ? AND date = ? AND status IN ('Approved','Awaiting HOD','Pending')
-      AND NOT (end_time <= ? OR start_time >= ?)
-  `;
 
-  db.get(overlapQuery, [room_id, date, start_time, end_time], (errOverlap, row) => {
-    if (errOverlap) {
-      console.error('Overlap check error:', errOverlap);
-      return renderStudentPage(req, res, 'Terjadi kesalahan server saat memeriksa ketersediaan.');
-    }
-    if (row && row.cnt > 0) {
-      return renderStudentPage(req, res, 'Waktu yang dipilih bentrok dengan booking lain. Silakan pilih waktu lain.');
-    }
-
-    // No overlap — proceed to insert booking
-    db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, letter_file, status, hod_status, dean_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
-      [userName, userEmail, room_id, date, start_time, end_time, purpose, letterFile], function (err) {
-        if (err) {
-          console.error('Booking error:', err);
-          return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
-        }
-        res.redirect('/student');
-      });
-  });
+  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, letter_file, status, hod_status, dean_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
+    [userName, userEmail, room_id, date, start_time, end_time, purpose, letterFile], function (err) {
+      if (err) {
+        console.error('Booking error:', err);
+        return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
+      }
+      res.redirect('/student');
+    });
 });
 
 app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
