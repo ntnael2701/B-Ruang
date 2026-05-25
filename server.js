@@ -367,15 +367,26 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res, next) => {
   if (start_time >= end_time) {
     return renderStudentPage(req, res, 'Jam selesai harus lebih besar dari jam mulai.');
   }
-
-  db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, letter_file, status, hod_status, dean_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
-    [userName, userEmail, room_id, date, start_time, end_time, purpose, letterFile], function (err) {
-      if (err) {
-        console.error('Booking error:', err);
-        return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
+  // Check for overlapping bookings (exclude rejected bookings)
+  db.get(`SELECT COUNT(1) AS cnt FROM bookings WHERE room_id = ? AND date = ? AND status != 'Rejected' AND NOT (end_time <= ? OR start_time >= ?)`,
+    [room_id, date, start_time, end_time], (errChk, row) => {
+      if (errChk) {
+        console.error('Conflict check error:', errChk);
+        return renderStudentPage(req, res, 'Terjadi kesalahan saat memeriksa konflik jadwal. Silakan coba lagi.');
       }
-      res.redirect('/student');
+      if (row && row.cnt > 0) {
+        return renderStudentPage(req, res, 'Waktu yang Anda pilih sudah dibooking untuk ruangan ini. Silakan pilih waktu atau tanggal lain.');
+      }
+
+      db.run(`INSERT INTO bookings (user_name, user_email, room_id, date, start_time, end_time, purpose, letter_file, status, hod_status, dean_status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Awaiting HOD', 'Pending', 'Pending')`,
+        [userName, userEmail, room_id, date, start_time, end_time, purpose, letterFile], function (err) {
+          if (err) {
+            console.error('Booking error:', err);
+            return renderStudentPage(req, res, 'Gagal membuat permintaan booking. Silakan coba lagi.');
+          }
+          res.redirect('/student');
+        });
     });
 });
 
