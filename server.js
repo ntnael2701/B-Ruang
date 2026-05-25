@@ -58,11 +58,16 @@ function ensureRole(role) {
   };
 }
 
+function normalizeRoomName(name) {
+  return typeof name === 'string' ? name.trim().toLowerCase() : '';
+}
+
 function uniqueRoomsByName(roomRows) {
   const roomsMap = new Map();
   roomRows.forEach(room => {
-    if (!roomsMap.has(room.name)) {
-      roomsMap.set(room.name, room);
+    const key = normalizeRoomName(room.name);
+    if (!roomsMap.has(key)) {
+      roomsMap.set(key, room);
     }
   });
   return Array.from(roomsMap.values());
@@ -71,10 +76,11 @@ function uniqueRoomsByName(roomRows) {
 function mergeRoomBookings(rooms, bookingsByRoom) {
   const roomsMap = new Map();
   rooms.forEach(room => {
-    if (!roomsMap.has(room.name)) {
-      roomsMap.set(room.name, { ...room, roomIds: [room.id] });
+    const key = normalizeRoomName(room.name);
+    if (!roomsMap.has(key)) {
+      roomsMap.set(key, { ...room, roomIds: [room.id] });
     } else {
-      roomsMap.get(room.name).roomIds.push(room.id);
+      roomsMap.get(key).roomIds.push(room.id);
     }
   });
   return Array.from(roomsMap.values()).map(room => {
@@ -167,7 +173,10 @@ function initDatabase() {
       { name: 'Ruang Rapat C', area: '30 m²', capacity: 20 }
     ];
 
-    db.all(`SELECT name, MIN(id) AS keep_id, GROUP_CONCAT(id) AS ids FROM rooms GROUP BY name HAVING COUNT(*) > 1`, [], (err, duplicates) => {
+    db.all(`SELECT LOWER(TRIM(name)) AS norm_name, MIN(id) AS keep_id, GROUP_CONCAT(id) AS ids
+            FROM rooms
+            GROUP BY LOWER(TRIM(name))
+            HAVING COUNT(*) > 1`, [], (err, duplicates) => {
       if (err) return console.error(err);
 
       duplicates.forEach(item => {
@@ -183,7 +192,7 @@ function initDatabase() {
         });
       });
 
-      db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name)`, [], err2 => {
+      db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_normalized_name ON rooms(LOWER(TRIM(name)))`, [], err2 => {
         if (err2) console.error(err2);
 
         seedUsers.forEach(user => {
