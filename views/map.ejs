@@ -13,7 +13,7 @@
       <header class="page-header">
         <div>
           <h1>Peta Ruangan</h1>
-          <p>Lihat ruangan yang kosong atau sudah dibooking hari ini.</p>
+          <p>Lihat ruangan yang kosong atau sudah dibooking.</p>
         </div>
         <div class="header-actions">
           <span>Halo, <strong><%= user.name %></strong></span>
@@ -21,6 +21,14 @@
           <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
       </header>
+
+      <section class="card" style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 15px; padding: 15px; background-color: rgba(95, 61, 196, 0.05); border-radius: 12px;">
+          <label for="dateFilter" style="font-weight: 600; white-space: nowrap;">Pilih Tanggal:</label>
+          <input type="date" id="dateFilter" value="<%= selectedDate %>" style="padding: 8px 12px; border: 1px solid rgba(95, 61, 196, 0.18); border-radius: 8px; font-size: 1em;">
+          <span id="dateInfo" style="color: #666; font-size: 0.95em;"></span>
+        </div>
+      </section>
 
       <section class="card">
         <div id="map" class="map-container"></div>
@@ -30,8 +38,16 @@
               <div class="room-card" style="border: 1px solid rgba(0,0,0,0.04);">
                 <h3><%= room.name %></h3>
                 <p><strong><%= room.area %></strong> — kapasitas <%= room.capacity %> orang</p>
-                <% if (room.booked_today && room.booked_today > 0) { %>
-                  <div class="status rejected">Terbooking hari ini</div>
+                <% if (room.bookings && room.bookings.length > 0) { %>
+                  <div class="status rejected">Terbooking</div>
+                  <div style="margin-top: 10px; padding: 8px; background-color: rgba(216, 71, 47, 0.1); border-radius: 6px; font-size: 0.9em;">
+                    <strong>Jam yang Terbooking:</strong>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                      <% room.bookings.forEach(booking => { %>
+                        <li><%= booking.start_time %> - <%= booking.end_time %></li>
+                      <% }); %>
+                    </ul>
+                  </div>
                 <% } else { %>
                   <div class="status approved">Tersedia</div>
                 <% } %>
@@ -44,6 +60,27 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-o9N1j7f4b0b8r5f5b6k6s0n0p3y2l1r4qvQ0p6+4n8M=" crossorigin=""></script>
     <script>
+      // Format tanggal untuk display
+      const selectedDateInput = document.getElementById('dateFilter');
+      const dateInfo = document.getElementById('dateInfo');
+      
+      function formatDate(dateStr) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', options);
+      }
+      
+      function updateDateInfo() {
+        dateInfo.textContent = '(' + formatDate(selectedDateInput.value) + ')';
+      }
+      
+      updateDateInfo();
+      
+      selectedDateInput.addEventListener('change', function() {
+        updateDateInfo();
+        // Reload peta dengan tanggal baru
+        window.location.href = '/map?date=' + this.value;
+      });
+      
       // initialize map
       var center = <%= JSON.stringify(center) %>;
       var rooms = <%= JSON.stringify(rooms) %>;
@@ -55,14 +92,28 @@
       }).addTo(map);
 
       rooms.forEach(function(room) {
-        var isBooked = room.booked_today && room.booked_today > 0;
+        var isBooked = room.bookings && room.bookings.length > 0;
         var marker = L.circleMarker(room.coords, {
           radius: 10,
           color: isBooked ? '#d8472f' : '#2f6f46',
           fillColor: isBooked ? '#f8d7d5' : '#dff3e6',
           fillOpacity: 0.9
         }).addTo(map);
-        marker.bindPopup('<strong>' + room.name + '</strong><br>' + room.area + '<br>Status: ' + (isBooked ? 'Terbooking' : 'Tersedia'));
+        
+        // Build popup content with booking times
+        var popupContent = '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
+        
+        if (isBooked && room.bookings.length > 0) {
+          popupContent += '<br><strong style="color: #d8472f;">Jam Terbooking:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">';
+          room.bookings.forEach(function(booking) {
+            popupContent += '<li>' + booking.start_time + ' - ' + booking.end_time + '</li>';
+          });
+          popupContent += '</ul>';
+        } else {
+          popupContent += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
+        }
+        
+        marker.bindPopup(popupContent);
       });
     </script>
   </body>

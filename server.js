@@ -242,25 +242,50 @@ app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
 });
 
 app.get('/map', ensureLoggedIn, (req, res) => {
-  // show whether rooms have approved bookings today
+  // Get selected date from query parameter, default to today
+  const selectedDate = req.query.date || new Date().toISOString().split('T')[0];
+  
+  // show whether rooms have approved bookings on selected date with time details
   db.all(`SELECT r.id, r.name, r.area, r.capacity,
-          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = date('now')) AS booked_today
-          FROM rooms r`, [], (err, rooms) => {
+          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = ?) AS booked_count
+          FROM rooms r`, [selectedDate], (err, rooms) => {
     if (err) return res.send('Gagal memuat peta ruangan.');
-    // simple hardcoded coordinates for rooms (centered on Universitas Diponegoro area)
-    const center = [-6.9685, 110.4095];
-    const coordsMap = {
-      'Ruang Seminar A': [-6.9682, 110.4092],
-      'Ruang Kelas B': [-6.9687, 110.4098],
-      'Ruang Rapat C': [-6.9691, 110.4101]
-    };
+    
+    // Get booking times for each room on selected date
+    db.all(`SELECT b.room_id, b.start_time, b.end_time, b.purpose, b.user_name
+            FROM bookings b
+            WHERE b.status = 'Approved' AND b.date = ?
+            ORDER BY b.start_time ASC`, [selectedDate], (err2, bookings) => {
+      if (err2) return res.send('Gagal memuat jadwal booking.');
+      
+      // Group bookings by room_id
+      const bookingsByRoom = {};
+      bookings.forEach(b => {
+        if (!bookingsByRoom[b.room_id]) bookingsByRoom[b.room_id] = [];
+        bookingsByRoom[b.room_id].push({
+          start_time: b.start_time,
+          end_time: b.end_time,
+          purpose: b.purpose,
+          user_name: b.user_name
+        });
+      });
+      
+      // simple hardcoded coordinates for rooms (centered on Universitas Diponegoro area)
+      const center = [-6.9685, 110.4095];
+      const coordsMap = {
+        'Ruang Seminar A': [-6.9682, 110.4092],
+        'Ruang Kelas B': [-6.9687, 110.4098],
+        'Ruang Rapat C': [-6.9691, 110.4101]
+      };
 
-    const roomsWithCoords = rooms.map(r => ({
-      ...r,
-      coords: coordsMap[r.name] || center
-    }));
+      const roomsWithCoords = rooms.map(r => ({
+        ...r,
+        coords: coordsMap[r.name] || center,
+        bookings: bookingsByRoom[r.id] || []
+      }));
 
-    res.render('map', { user: req.session.user, rooms: roomsWithCoords, center });
+      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, selectedDate });
+    });
   });
 });
 
