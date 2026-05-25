@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Peta Ruangan - B-Ruang</title>
     <link rel="stylesheet" href="/css/style.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-sA+e2k9Qb2FQYx3YkGkGynm4bM6Qw1p2Gf9s6z6bMqo=" crossorigin="" />
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
   </head>
   <body>
     <div class="container">
@@ -57,8 +56,7 @@
         </div>
       </section>
     </div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-o9N1j7f4b0b8r5f5b6k6s0n0p3y2l1r4qvQ0p6+4n8M=" crossorigin=""></script>
+    <script src="/vendor/leaflet/leaflet.js"></script>
     <script>
       // Format tanggal untuk display
       const selectedDateInput = document.getElementById('dateFilter');
@@ -85,6 +83,52 @@
       var center = <%= JSON.stringify(center) %>;
       var rooms = <%= JSON.stringify(rooms) %>;
 
+      // Helpers to compute free ranges
+      function parseTimeToMinutes(t) {
+        if (!t) return null;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      }
+
+      function minutesToTime(m) {
+        const hh = String(Math.floor(m / 60)).padStart(2, '0');
+        const mm = String(m % 60).padStart(2, '0');
+        return hh + ':' + mm;
+      }
+
+      // bookings: [{start_time, end_time}, ...]
+      function computeFreeRanges(bookings, dayStart = '07:00', dayEnd = '22:00') {
+        const startMin = parseTimeToMinutes(dayStart);
+        const endMin = parseTimeToMinutes(dayEnd);
+        if (!bookings || bookings.length === 0) return [{ start: minutesToTime(startMin), end: minutesToTime(endMin) }];
+
+        // Convert and sort
+        const intervals = bookings.map(b => ({
+          s: parseTimeToMinutes(b.start_time),
+          e: parseTimeToMinutes(b.end_time)
+        })).sort((a, b) => a.s - b.s);
+
+        // Merge overlapping intervals
+        const merged = [];
+        intervals.forEach(iv => {
+          if (iv.e <= iv.s) return; // skip invalid
+          if (!merged.length || iv.s > merged[merged.length - 1].e) merged.push({ ...iv });
+          else merged[merged.length - 1].e = Math.max(merged[merged.length - 1].e, iv.e);
+        });
+
+        const free = [];
+        // before first
+        if (merged[0].s > startMin) free.push({ start: minutesToTime(startMin), end: minutesToTime(merged[0].s) });
+        // between
+        for (let i = 0; i < merged.length - 1; i++) {
+          if (merged[i].e < merged[i + 1].s) free.push({ start: minutesToTime(merged[i].e), end: minutesToTime(merged[i + 1].s) });
+        }
+        // after last
+        if (merged[merged.length - 1].e < endMin) free.push({ start: minutesToTime(merged[merged.length - 1].e), end: minutesToTime(endMin) });
+
+        return free;
+      }
+
       var map = L.map('map').setView(center, 17);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -100,7 +144,10 @@
           fillOpacity: 0.9
         }).addTo(map);
         
-        // Build popup content with booking times
+        // Compute available ranges (default operational hours 07:00-22:00)
+        const freeRanges = computeFreeRanges(room.bookings, '07:00', '22:00');
+
+        // Build popup content with booking times and available slots
         var popupContent = '<strong>' + room.name + '</strong><br>' + room.area + '<br>';
         
         if (isBooked && room.bookings.length > 0) {
@@ -112,7 +159,26 @@
         } else {
           popupContent += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
         }
-        
+
+        if (freeRanges && freeRanges.length > 0) {
+          popupContent += '<br><strong style="color: #2f6f46;">Jam Tersedia:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">';
+          freeRanges.forEach(function(slot) {
+            popupContent += '<li>' + slot.start + ' - ' + slot.end + '</li>';
+          });
+          popupContent += '</ul>';
+        }
+
+        // Build a short tooltip summary
+        var tooltipSummary = '';
+        if (!isBooked) {
+          tooltipSummary = 'Kosong: 07:00 - 22:00';
+        } else {
+          var bookedSummary = room.bookings.map(b => b.start_time + '–' + b.end_time).join('; ');
+          var freeSummary = freeRanges.map(s => s.start + '–' + s.end).join('; ');
+          tooltipSummary = 'Terbooking: ' + bookedSummary + (freeSummary ? ' | Tersedia: ' + freeSummary : '');
+        }
+
+        marker.bindTooltip(tooltipSummary, { direction: 'top', offset: [0, -10] });
         marker.bindPopup(popupContent);
       });
     </script>
