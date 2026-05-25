@@ -23,9 +23,14 @@
       </header>
 
       <section class="card">
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+          <label for="datePicker">Pilih tanggal:</label>
+          <input type="date" id="datePicker" value="<%= today %>" />
+          <small style="color:#666;">(Tampilkan jadwal booking untuk tanggal terpilih)</small>
+        </div>
         <div id="map" class="map-container"></div>
         <div style="margin-top:12px;">
-          <div class="rooms-grid">
+          <div id="roomsGrid" class="rooms-grid">
             <% rooms.forEach(room => { %>
               <div class="room-card" style="border: 1px solid rgba(0,0,0,0.04);">
                 <h3><%= room.name %></h3>

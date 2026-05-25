@@ -287,6 +287,51 @@ app.get('/map', ensureLoggedIn, (req, res) => {
   });
 });
 
+// API endpoint to fetch rooms and bookings for a given date (JSON)
+app.get('/api/bookings', ensureLoggedIn, (req, res) => {
+  const date = req.query.date || new Date().toISOString().split('T')[0];
+
+  db.all(`SELECT r.id, r.name, r.area, r.capacity,
+          (SELECT COUNT(1) FROM bookings b WHERE b.room_id = r.id AND b.status = 'Approved' AND b.date = ?) AS booked_count
+          FROM rooms r`, [date], (err, rooms) => {
+    if (err) return res.status(500).json({ error: 'Gagal memuat ruangan.' });
+
+    db.all(`SELECT b.room_id, b.start_time, b.end_time, b.user_name, b.purpose, b.date
+            FROM bookings b
+            WHERE b.status = 'Approved' AND b.date = ?
+            ORDER BY b.room_id, b.start_time`, [date], (err2, bookings) => {
+      if (err2) return res.status(500).json({ error: 'Gagal memuat booking.' });
+
+      const bookingsByRoom = {};
+      bookings.forEach(b => {
+        if (!bookingsByRoom[b.room_id]) bookingsByRoom[b.room_id] = [];
+        bookingsByRoom[b.room_id].push({
+          start_time: b.start_time,
+          end_time: b.end_time,
+          user_name: b.user_name,
+          purpose: b.purpose,
+          date: b.date
+        });
+      });
+
+      const center = [-6.9685, 110.4095];
+      const coordsMap = {
+        'Ruang Seminar A': [-6.9682, 110.4092],
+        'Ruang Kelas B': [-6.9687, 110.4098],
+        'Ruang Rapat C': [-6.9691, 110.4101]
+      };
+
+      const roomsWithCoords = rooms.map(r => ({
+        ...r,
+        coords: coordsMap[r.name] || center,
+        bookings: bookingsByRoom[r.id] || []
+      }));
+
+      res.json({ date, rooms: roomsWithCoords, center });
+    });
+  });
+});
+
 app.get('/download-template', ensureLoggedIn, (req, res) => {
   const filePath = path.join(__dirname, 'public', 'files', 'template_surat.doc');
   res.download(filePath, 'template_surat.doc');
