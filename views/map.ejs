@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Peta Ruangan - B-Ruang</title>
     <link rel="stylesheet" href="/css/style.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-sA+e2k9Qb2FQYx3YkGkGynm4bM6Qw1p2Gf9s6z6bMqo=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   </head>
   <body>
     <div class="container">
@@ -29,6 +28,16 @@
           <small style="color:#666;">(Tampilkan jadwal booking untuk tanggal terpilih)</small>
         </div>
         <div id="map" class="map-container"></div>
+        <div style="display:flex; gap:12px; margin: 10px 0; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="width:12px; height:12px; border-radius:50%; background:#d8472f; display:inline-block;"></span>
+            <span>Terbooking</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="width:12px; height:12px; border-radius:50%; background:#2f6f46; display:inline-block;"></span>
+            <span>Tersedia</span>
+          </div>
+        </div>
         <div style="margin-top:12px;">
           <div id="roomsGrid" class="rooms-grid">
             <% rooms.forEach(room => { %>
@@ -57,8 +66,8 @@
         </div>
       </section>
     </div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-o9N1j7f4b0b8r5f5b6k6s0n0p3y2l1r4qvQ0p6+4n8M=" crossorigin=""></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
       // initialize map
       var center = <%= JSON.stringify(center) %>;
@@ -81,7 +90,7 @@
           });
           popupContent += '</div>';
         } else {
-          popupContent += 'Status: <strong>Tersedia</strong>';
+          popupContent += '<strong style="color: #2f6f46;">Status: Tersedia</strong>';
         }
         return popupContent;
       }
@@ -114,7 +123,7 @@
           html += '<h3>' + room.name + '</h3>';
           html += '<p><strong>' + room.area + '</strong> — kapasitas ' + room.capacity + ' orang</p>';
           if (isBooked) {
-            html += '<div class="status rejected">Terbooking</div>';
+            html += '<div class="status rejected">Terbooking hari ini</div>';
             html += '<div style="margin-top: 10px; background: #fff8f0; padding: 10px; border-radius: 8px; font-size: 12px;">';
             html += '<strong style="color: #d8472f;">Jam yang tidak tersedia:</strong>';
             html += '<ul style="margin: 5px 0; padding-left: 18px;">';
@@ -148,10 +157,13 @@
       }
 
       document.getElementById('datePicker').addEventListener('change', function(event) {
-        fetchBookings(event.target.value);
+        if (event.target.value) {
+          fetchBookings(event.target.value);
+        }
       });
 
-      renderMarkers(rooms);
+      // Load booking data for the selected date on initial page load
+      fetchBookings(document.getElementById('datePicker').value);
     </script>
   </body>
 </html>

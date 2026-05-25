@@ -17,14 +17,33 @@ Web booking ruangan Undip untuk acara dengan sistem login mahasiswa dan admin.
    ```bash
    npm install
    ```
-3. Jalankan aplikasi:
+3. Jalankan aplikasi biasa:
    ```bash
    npm start
    ```
-4. Buka browser dan akses:
+4. Atau jalankan dengan `pm2` agar proses tetap hidup walau terminal ditutup:
+   ```bash
+   npm run pm2
+   ```
+5. Buka browser dan akses:
    ```
    http://localhost:3000
    ```
+
+## Mengelola dengan pm2
+
+- Hentikan proses:
+  ```bash
+  npm run pm2:stop
+  ```
+- Restart proses:
+  ```bash
+  npm run pm2:restart
+  ```
+- Lihat status pm2:
+  ```bash
+  npm run pm2:list
+  ```
 
 ## Akun Contoh
 

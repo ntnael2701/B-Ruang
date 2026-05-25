@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Isi Identitas Mahasiswa - B-Ruang</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="page-header">
+        <div>
+          <h1>Lengkapi Identitas</h1>
+          <p>Sebelum memilih ruangan, isi data diri mahasiswa terlebih dahulu.</p>
+        </div>
+      </header>
+
+      <section class="card auth-card profile-card">
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
+
+        <form action="/student/profile" method="post" class="login-form">
+          <label>Nama Lengkap</label>
+          <input type="text" name="name" required placeholder="Masukkan nama lengkap" value="<%= user.name || '' %>" />
+
+          <label>NIM</label>
+          <input type="text" name="nim" required placeholder="Masukkan NIM" value="<%= user.nim || '' %>" />
+
+          <label>Program Studi</label>
+          <input type="text" name="prodi" required placeholder="Masukkan prodi" value="<%= user.prodi || '' %>" />
+
+          <label>Angkatan</label>
+          <input type="text" name="angkatan" required placeholder="Masukkan angkatan" value="<%= user.angkatan || '' %>" />
+
+          <button type="submit" class="btn">Simpan Identitas</button>
+        </form>
+      </section>
+    </div>
+  </body>
+</html>
