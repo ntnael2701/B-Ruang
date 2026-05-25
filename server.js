@@ -347,6 +347,57 @@ app.post('/admin/decision', ensureLoggedIn, ensureRole('admin'), (req, res) => {
   }
 });
 
+// Delete booking route
+app.post('/admin/delete', ensureLoggedIn, ensureRole('admin'), (req, res) => {
+  const { booking_id } = req.body;
+
+  // Get booking details to get the letter file name
+  db.get(`SELECT letter_file FROM bookings WHERE id = ?`, [booking_id], (err, row) => {
+    if (err) {
+      console.error('DB error:', err);
+      return res.status(500).send('Gagal menghapus booking.');
+    }
+    if (!row) {
+      console.log('Booking not found:', booking_id);
+      return res.status(404).send('Booking tidak ditemukan.');
+    }
+
+    // Delete the file if it exists
+    if (row.letter_file) {
+      const filePath = path.join(uploadFolder, row.letter_file);
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr && unlinkErr.code !== 'ENOENT') {
+          console.error('Error deleting file:', unlinkErr);
+        }
+        // Continue with DB deletion regardless of file deletion
+        deleteFromDatabase();
+      });
+    } else {
+      deleteFromDatabase();
+    }
+
+    function deleteFromDatabase() {
+      // Delete notifications for this booking
+      db.run(`DELETE FROM notifications WHERE booking_id = ?`, [booking_id], (notifErr) => {
+        if (notifErr) {
+          console.error('Error deleting notifications:', notifErr);
+          return res.status(500).send('Gagal menghapus notifikasi.');
+        }
+
+        // Delete the booking
+        db.run(`DELETE FROM bookings WHERE id = ?`, [booking_id], (delErr) => {
+          if (delErr) {
+            console.error('Error deleting booking:', delErr);
+            return res.status(500).send('Gagal menghapus booking dari database.');
+          }
+          console.log('Booking deleted successfully:', booking_id);
+          res.redirect('/admin');
+        });
+      });
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`B-Ruang berjalan di http://localhost:${PORT}`);
 });

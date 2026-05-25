@@ -74,6 +74,10 @@
                     <% } else { %>
                       <span class="small-text"><%= booking.status %></span>
                     <% } %>
+                    <form class="inline-form" action="/admin/delete" method="post" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus permintaan ini?');">
+                      <input type="hidden" name="booking_id" value="<%= booking.id %>" />
+                      <button type="submit" class="btn btn-reject" style="background-color: #dc3545;">Hapus</button>
+                    </form>
                   </td>
                 </tr>
               <% }); %>
