@@ -26,11 +26,13 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf'];
-    if (allowedTypes.includes(file.mimetype) && path.extname(file.originalname).toLowerCase() === '.pdf') {
+    const allowedExt = ['.pdf', '.doc', '.docx'];
+    const allowedMime = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedMime.includes(file.mimetype) && allowedExt.includes(ext)) {
       return cb(null, true);
     }
-    cb(new Error('Hanya file PDF yang diperbolehkan.'));
+    cb(new Error('Hanya file PDF, DOC, atau DOCX yang diperbolehkan.'));
   }
 });
 
@@ -86,7 +88,10 @@ function initDatabase() {
       email TEXT UNIQUE,
       name TEXT,
       password TEXT,
-      role TEXT
+      role TEXT,
+      nim TEXT,
+      prodi TEXT,
+      angkatan TEXT
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS rooms (
@@ -129,9 +134,11 @@ function initDatabase() {
     ];
 
     const seedRooms = [
-      { name: 'Ruang Seminar A', area: '60 m²', capacity: 40 },
-      { name: 'Ruang Kelas B', area: '45 m²', capacity: 30 },
-      { name: 'Ruang Rapat C', area: '30 m²', capacity: 20 }
+      { name: 'Auditorium Soedjono', area: '200 m²', capacity: 300 },
+      { name: 'Ruang Kelas 101', area: '55 m²', capacity: 40 },
+      { name: 'Ruang Rapat Dekanat', area: '40 m²', capacity: 25 },
+      { name: 'Laboratorium Komputer 4', area: '60 m²', capacity: 35 },
+      { name: 'Ruang Seminar 2', area: '75 m²', capacity: 60 }
     ];
 
     seedUsers.forEach(user => {
@@ -140,9 +147,19 @@ function initDatabase() {
     });
 
     seedRooms.forEach(room => {
-      db.run(`INSERT OR IGNORE INTO rooms (name, area, capacity) VALUES (?, ?, ?)`,
-        [room.name, room.area, room.capacity]);
+      db.get(`SELECT id FROM rooms WHERE name = ?`, [room.name], (err, row) => {
+        if (err) return;
+        if (!row) {
+          db.run(`INSERT INTO rooms (name, area, capacity) VALUES (?, ?, ?)`,
+            [room.name, room.area, room.capacity]);
+        }
+      });
     });
+
+    // Update old sample room names to new UDIP room names if already present in the database
+    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Auditorium Soedjono', '200 m²', 300, 'Ruang Seminar A']);
+    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Ruang Kelas 101', '55 m²', 40, 'Ruang Kelas B']);
+    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Ruang Rapat Dekanat', '40 m²', 25, 'Ruang Rapat C']);
   });
 }
 
@@ -161,6 +178,15 @@ db.all(`PRAGMA table_info(bookings)`, [], (err, cols) => {
   if (!names.includes('letter_file')) {
     db.run(`ALTER TABLE bookings ADD COLUMN letter_file TEXT`);
   }
+  if (!names.includes('nim')) {
+    db.run(`ALTER TABLE users ADD COLUMN nim TEXT`);
+  }
+  if (!names.includes('prodi')) {
+    db.run(`ALTER TABLE users ADD COLUMN prodi TEXT`);
+  }
+  if (!names.includes('angkatan')) {
+    db.run(`ALTER TABLE users ADD COLUMN angkatan TEXT`);
+  }
 });
 
 app.get('/', (req, res) => {
@@ -174,6 +200,10 @@ app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
+function studentNeedsProfile(user) {
+  return !user || !user.nim || !user.prodi || !user.angkatan;
+}
+
 app.post('/login', (req, res) => {
   const { email, password, role } = req.body;
   db.get(`SELECT * FROM users WHERE email = ? AND role = ?`, [email, role], (err, user) => {
@@ -181,8 +211,22 @@ app.post('/login', (req, res) => {
     if (!user || user.password !== password) {
       return res.render('login', { error: 'Email, password, atau role salah.' });
     }
-    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
-    return res.redirect(user.role === 'admin' ? '/admin' : '/student');
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      nim: user.nim,
+      prodi: user.prodi,
+      angkatan: user.angkatan
+    };
+    if (user.role === 'admin') {
+      return res.redirect('/admin');
+    }
+    if (studentNeedsProfile(req.session.user)) {
+      return res.redirect('/student/profile');
+    }
+    return res.redirect('/student');
   });
 });
 
@@ -191,7 +235,39 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/student', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
+  if (studentNeedsProfile(req.session.user)) {
+    return res.redirect('/student/profile');
+  }
   renderStudentPage(req, res);
+});
+
+app.get('/student/profile', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
+  if (!studentNeedsProfile(req.session.user)) {
+    return res.redirect('/student');
+  }
+  res.render('student_profile', { user: req.session.user, error: null });
+});
+
+app.post('/student/profile', ensureLoggedIn, ensureRole('mahasiswa'), (req, res) => {
+  const { name, nim, prodi, angkatan } = req.body;
+  if (!name || !nim || !prodi || !angkatan) {
+    return res.render('student_profile', { user: req.session.user, error: 'Mohon lengkapi semua data identitas.' });
+  }
+  db.run(`UPDATE users SET name = ?, nim = ?, prodi = ?, angkatan = ? WHERE id = ?`,
+    [name, nim, prodi, angkatan, req.session.user.id], function (err) {
+      if (err) {
+        console.error('Update profile error:', err);
+        return res.render('student_profile', { user: req.session.user, error: 'Gagal menyimpan data identitas. Silakan coba lagi.' });
+      }
+      req.session.user = {
+        ...req.session.user,
+        name,
+        nim,
+        prodi,
+        angkatan
+      };
+      res.redirect('/student');
+    });
 });
 
 app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res, next) => {
@@ -273,9 +349,11 @@ app.get('/map', ensureLoggedIn, (req, res) => {
       // simple hardcoded coordinates for rooms (centered on Universitas Diponegoro area)
       const center = [-6.9685, 110.4095];
       const coordsMap = {
-        'Ruang Seminar A': [-6.9682, 110.4092],
-        'Ruang Kelas B': [-6.9687, 110.4098],
-        'Ruang Rapat C': [-6.9691, 110.4101]
+        'Auditorium Soedjono': [-6.9704, 110.4090],
+        'Ruang Kelas 101': [-6.9695, 110.4088],
+        'Ruang Rapat Dekanat': [-6.9689, 110.4103],
+        'Laboratorium Komputer 4': [-6.9686, 110.4099],
+        'Ruang Seminar 2': [-6.9693, 110.4094]
       };
 
       const roomsWithCoords = rooms.map(r => ({
@@ -284,7 +362,13 @@ app.get('/map', ensureLoggedIn, (req, res) => {
         bookings: bookingsByRoom[r.id] || []
       }));
 
-      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, selectedDate });
+      res.render('map', {
+        user: req.session.user,
+        rooms: roomsWithCoords,
+        center,
+        selectedDate,
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
+      });
     });
   });
 });
