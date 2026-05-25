@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Peta Ruangan - B-Ruang</title>
     <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   </head>
   <body>
     <div class="container">
@@ -47,19 +48,28 @@
             </thead>
             <tbody>
               <% rooms.forEach(room => { %>
-                <% if (room.bookings && room.bookings.length > 0) { %>
-                  <div class="status rejected">Terbooking</div>
-                  <div style="margin-top: 10px; padding: 8px; background-color: rgba(216, 71, 47, 0.1); border-radius: 6px; font-size: 0.9em;">
-                    <strong>Jam yang Terbooking:</strong>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
+                <tr>
+                  <td><strong><%= room.name %></strong></td>
+                  <td><%= room.area %></td>
+                  <td>
+                    <% if (room.bookings && room.bookings.length > 0) { %>
                       <% room.bookings.forEach(booking => { %>
-                        <li><%= booking.start_time %> - <%= booking.end_time %></li>
+                        <div style="font-size: 0.9em; margin: 4px 0;">
+                          <%= booking.start_time %> - <%= booking.end_time %>
+                        </div>
                       <% }); %>
-                    </ul>
-                  </div>
-                <% } else { %>
-                  <div class="status approved">Tersedia</div>
-                <% } %>
+                    <% } else { %>
+                      <span style="color: #999;">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (room.bookings && room.bookings.length > 0) { %>
+                      <span class="status rejected">Terbooking</span>
+                    <% } else { %>
+                      <span class="status approved">Tersedia</span>
+                    <% } %>
+                  </td>
+                </tr>
               <% }); %>
             </tbody>
           </table>
@@ -67,31 +77,8 @@
       </section>
     </div>
 
-    <% if (googleMapsApiKey) { %>
-      <script src="https://maps.googleapis.com/maps/api/js?key=<%= googleMapsApiKey %>&callback=initMap" async defer></script>
-    <% } %>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
-      // Format tanggal untuk display
-      const selectedDateInput = document.getElementById('dateFilter');
-      const dateInfo = document.getElementById('dateInfo');
-      
-      function formatDate(dateStr) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', options);
-      }
-      
-      function updateDateInfo() {
-        dateInfo.textContent = '(' + formatDate(selectedDateInput.value) + ')';
-      }
-      
-      updateDateInfo();
-      
-      selectedDateInput.addEventListener('change', function() {
-        updateDateInfo();
-        // Reload peta dengan tanggal baru
-        window.location.href = '/map?date=' + this.value;
-      });
-      
       // initialize map
       var center = <%= JSON.stringify(center) %>;
       var rooms = <%= JSON.stringify(rooms) %>;

@@ -360,7 +360,7 @@ app.get('/map', ensureLoggedIn, (req, res) => {
         bookings: bookingsByRoom[r.id] || []
       }));
 
-      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, selectedDate });
+      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center });
     });
   });
 });
