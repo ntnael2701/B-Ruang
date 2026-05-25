@@ -50,7 +50,7 @@
                   <td><%= booking.purpose %></td>
                   <td>
                     <% if (booking.letter_file) { %>
-                      <a href="/download-surat/<%= booking.id %>" target="_blank" class="btn btn-secondary">Download Surat</a>
+                      <a href="/download-surat/<%= booking.id %>" class="btn btn-secondary">Lihat Surat</a>
                     <% } else { %>
                       <span class="small-text">Tidak ada surat</span>
                     <% } %>

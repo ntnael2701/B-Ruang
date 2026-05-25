@@ -269,6 +269,39 @@ app.get('/download-template', ensureLoggedIn, (req, res) => {
   res.download(filePath, 'template_surat.doc');
 });
 
+// Serve uploaded letter file inline (so browser can open in same tab)
+app.get('/download-surat/:id', (req, res) => {
+  const bookingId = req.params.id;
+
+  if (!req.session || !req.session.user) {
+    return res.status(401).send('<p>Anda harus <a href="/login">login</a> untuk melihat surat.</p>');
+  }
+
+  // Only allow admin or the user who uploaded the letter to view it
+  db.get(`SELECT letter_file, user_email FROM bookings WHERE id = ?`, [bookingId], (err, row) => {
+    if (err) return res.status(500).send('Terjadi kesalahan server.');
+    if (!row || !row.letter_file) return res.status(404).send('Surat tidak ditemukan.');
+
+    const user = req.session.user;
+    if (user.role !== 'admin' && user.email !== row.user_email) {
+      return res.status(403).send('Anda tidak memiliki akses untuk melihat surat ini.');
+    }
+
+    const filePath = path.resolve(uploadFolder, row.letter_file);
+    fs.access(filePath, fs.constants.R_OK, (accessErr) => {
+      if (accessErr) return res.status(404).send('File surat tidak tersedia.');
+      res.type('application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${row.letter_file}"`);
+      res.sendFile(filePath, (sendErr) => {
+        if (sendErr) {
+          console.error('sendFile error:', sendErr);
+          if (!res.headersSent) res.status(500).send('Gagal mengirim file surat.');
+        }
+      });
+    });
+  });
+});
+
 app.get('/template', ensureLoggedIn, (req, res) => {
   // render preview of the letter template (HTML styled for printing/PDF)
   res.render('template', { user: req.session.user });
