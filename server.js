@@ -189,10 +189,13 @@ function initDatabase() {
 
     const seedRooms = [
       { name: 'Auditorium Soedjono', area: '200 m²', capacity: 300 },
-      { name: 'Ruang Kelas 101', area: '55 m²', capacity: 40 },
-      { name: 'Ruang Rapat Dekanat', area: '40 m²', capacity: 25 },
-      { name: 'Laboratorium Komputer 4', area: '60 m²', capacity: 35 },
-      { name: 'Ruang Seminar 2', area: '75 m²', capacity: 60 }
+      { name: 'Ruang Kelas A', area: '55 m²', capacity: 40 },
+      { name: 'Ruang Kelas B', area: '55 m²', capacity: 40 },
+      { name: 'Ruang Kelas C', area: '55 m²', capacity: 40 },
+      { name: 'Ruang Seminar a', area: '75 m²', capacity: 60 },
+      { name: 'Ruang Seminar b', area: '75 m²', capacity: 60 },
+      { name: 'Ruang Seminar c', area: '75 m²', capacity: 60 },
+      { name: 'Laboratorium Komputer 4', area: '60 m²', capacity: 35 }
     ];
 
     db.all(`SELECT LOWER(TRIM(name)) AS norm_name, MIN(id) AS keep_id, GROUP_CONCAT(id) AS ids
@@ -228,11 +231,6 @@ function initDatabase() {
         });
       });
     });
-
-    // Update old sample room names to new UDIP room names if already present in the database
-    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Auditorium Soedjono', '200 m²', 300, 'Ruang Seminar A']);
-    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Ruang Kelas 101', '55 m²', 40, 'Ruang Kelas B']);
-    db.run(`UPDATE rooms SET name = ?, area = ?, capacity = ? WHERE name = ?`, ['Ruang Rapat Dekanat', '40 m²', 25, 'Ruang Rapat C']);
   });
 }
 
