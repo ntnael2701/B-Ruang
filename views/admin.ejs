@@ -14,8 +14,8 @@
           <p>Kelola permintaan booking ruangan Undip.</p>
         </div>
         <div class="header-actions">
-          <span>Halo, <strong>Mahasiswa</strong></span>
-          <a href="/map" class="btn btn-secondary">Peta Ruangan</a>
+          <span>Halo, <strong>Admin</strong></span>
+          <a href="/map" class="btn btn-secondary">Ruang yang Tersedia</a>
           <a href="/download-template" class="btn btn-secondary">Download Template Surat</a>
           <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
@@ -27,7 +27,8 @@
           <table>
             <thead>
               <tr>
-                <th>Mahasiswa</th>
+                <th>Nama Pemohon</th>
+                <th>Email</th>
                 <th>Ruang</th>
                 <th>Tanggal</th>
                 <th>Jam</th>
@@ -43,7 +44,8 @@
               <% } %>
               <% bookings.forEach(booking => { %>
                 <tr>
-                  <td><%= booking.user_name %> (<%= booking.user_email %>)</td>
+                  <td><%= booking.user_name || 'Tanpa Nama' %></td>
+                  <td><%= booking.user_email %></td>
                   <td><%= booking.room_name %></td>
                   <td><%= booking.date %></td>
                   <td><%= booking.start_time %> - <%= booking.end_time %></td>
