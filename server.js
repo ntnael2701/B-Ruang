@@ -64,13 +64,6 @@ function normalizeRoomName(name) {
   return typeof name === 'string' ? name.trim().toLowerCase() : '';
 }
 
-function getDisplayUser(user) {
-  return {
-    ...(user || {}),
-    name: user && typeof user.name === 'string' && user.name.trim() ? user.name.trim() : 'Mahasiswa'
-  };
-}
-
 function uniqueRoomsByName(roomRows) {
   const roomsMap = new Map();
   roomRows.forEach(room => {
@@ -120,7 +113,7 @@ function renderStudentPage(req, res, error = null) {
                 WHERE user_email = ?
                 ORDER BY created_at DESC`, [req.session.user.email], (err3, notifications) => {
           if (err3) return res.send('Gagal memuat notifikasi.');
-          res.render('student', { user: getDisplayUser(req.session.user), rooms: uniqueRooms, bookings, notifications, error });
+          res.render('student', { user: req.session.user, rooms: uniqueRooms, bookings, notifications, error });
         });
       });
     });
@@ -407,7 +400,7 @@ app.get('/admin', ensureLoggedIn, ensureRole('admin'), (req, res) => {
           LEFT JOIN rooms r ON b.room_id = r.id
           ORDER BY b.created_at DESC`, [], (err, bookings) => {
     if (err) return res.send('Gagal memuat permintaan booking.');
-    res.render('admin', { user: getDisplayUser(req.session.user), bookings });
+    res.render('admin', { user: req.session.user, bookings });
   });
 });
 
@@ -454,7 +447,7 @@ app.get('/map', ensureLoggedIn, (req, res) => {
         bookings: r.bookings || []
       }));
 
-      res.render('map', { user: getDisplayUser(req.session.user), rooms: roomsWithCoords, center, today });
+      res.render('map', { user: req.session.user, rooms: roomsWithCoords, center, today });
     });
   });
 });
@@ -546,7 +539,7 @@ app.get('/download-surat/:id', (req, res) => {
 
 app.get('/template', ensureLoggedIn, (req, res) => {
   // render preview of the letter template (HTML styled for printing/PDF)
-  res.render('template', { user: getDisplayUser(req.session.user) });
+  res.render('template', { user: req.session.user });
 });
 
 app.post('/admin/decision', ensureLoggedIn, ensureRole('admin'), (req, res) => {
