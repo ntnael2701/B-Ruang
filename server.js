@@ -354,8 +354,8 @@ app.post('/book', ensureLoggedIn, ensureRole('mahasiswa'), (req, res, next) => {
     next();
   });
 }, (req, res) => {
-  const { room_id, date, start_time, end_time, purpose } = req.body;
-  const userName = req.session.user.name;
+  const { room_id, date, start_time, end_time, purpose, user_name } = req.body;
+  const userName = (user_name && user_name.trim()) || req.session.user.name || 'Mahasiswa';
   const userEmail = req.session.user.email;
   const letterFile = req.file && req.file.filename;
 

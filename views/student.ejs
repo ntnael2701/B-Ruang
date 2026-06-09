@@ -14,7 +14,7 @@
           <p>Booking ruangan Undip untuk acara.</p>
         </div>
         <div class="header-actions">
-          <span>Halo, <strong><%= user.name %></strong></span>
+          <span>Halo, <strong>Mahasiswa</strong></span>
           <a href="/map" class="btn btn-secondary">Peta Ruangan</a>
           <a href="/download-template" class="btn btn-secondary">Download Template Surat</a>
           <a href="/logout" class="btn btn-secondary">Logout</a>
@@ -52,6 +52,8 @@
           <input type="time" name="start_time" required />
           <label>Jam selesai</label>
           <input type="time" name="end_time" required />
+          <label>Nama pemohon</label>
+          <input type="text" name="user_name" required placeholder="Masukkan nama lengkap pemohon" value="<%= user.name || '' %>" />
           <label>Keperluan acara</label>
           <textarea name="purpose" rows="3" required placeholder="Contoh: Seminar, diskusi organisasi..."></textarea>
           <label>Unggah surat permohonan (.doc, .docx, .pdf)</label>
