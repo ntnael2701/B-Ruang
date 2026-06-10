@@ -140,21 +140,6 @@ function initDatabase() {
       capacity INTEGER
     )`);
 
-    // remove duplicate room rows and keep the earliest one for each name
-    db.run(`UPDATE bookings
-            SET room_id = (
-              SELECT MIN(id)
-              FROM rooms AS canonical
-              WHERE canonical.name = (
-                SELECT name FROM rooms WHERE id = bookings.room_id
-              )
-            )
-            WHERE room_id IN (
-              SELECT id FROM rooms GROUP BY name HAVING COUNT(*) > 1
-            )`);
-    db.run(`DELETE FROM rooms WHERE id NOT IN (SELECT MIN(id) FROM rooms GROUP BY name)`);
-    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name)`);
-
     db.run(`CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_name TEXT,
@@ -171,6 +156,21 @@ function initDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(room_id) REFERENCES rooms(id)
     )`);
+
+    // remove duplicate room rows and keep the earliest one for each name
+    db.run(`UPDATE bookings
+            SET room_id = (
+              SELECT MIN(id)
+              FROM rooms AS canonical
+              WHERE canonical.name = (
+                SELECT name FROM rooms WHERE id = bookings.room_id
+              )
+            )
+            WHERE room_id IN (
+              SELECT id FROM rooms GROUP BY name HAVING COUNT(*) > 1
+            )`);
+    db.run(`DELETE FROM rooms WHERE id NOT IN (SELECT MIN(id) FROM rooms GROUP BY name)`);
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name)`);
 
     db.run(`CREATE TABLE IF NOT EXISTS notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,32 +237,33 @@ function initDatabase() {
 initDatabase();
 
 // Migrate tables safely when the database already exists.
-db.all(`PRAGMA table_info(bookings)`, [], (err, bookingCols) => {
+db.all(`PRAGMA table_info(bookings)`, [], (err, cols) => {
   if (err) return console.error(err);
-  const bookingNames = bookingCols.map(c => c.name);
-  if (!bookingNames.includes('hod_status')) {
+  const bookingCols = cols.map(c => c.name);
+  if (!bookingCols.includes('hod_status')) {
     db.run(`ALTER TABLE bookings ADD COLUMN hod_status TEXT DEFAULT 'Pending'`);
   }
-  if (!bookingNames.includes('dean_status')) {
+  if (!bookingCols.includes('dean_status')) {
     db.run(`ALTER TABLE bookings ADD COLUMN dean_status TEXT DEFAULT 'Pending'`);
   }
-  if (!bookingNames.includes('letter_file')) {
+  if (!bookingCols.includes('letter_file')) {
     db.run(`ALTER TABLE bookings ADD COLUMN letter_file TEXT`);
   }
+});
 
-  db.all(`PRAGMA table_info(users)`, [], (err2, userCols) => {
-    if (err2) return console.error(err2);
-    const userNames = userCols.map(c => c.name);
-    if (!userNames.includes('nim')) {
-      db.run(`ALTER TABLE users ADD COLUMN nim TEXT`);
-    }
-    if (!userNames.includes('prodi')) {
-      db.run(`ALTER TABLE users ADD COLUMN prodi TEXT`);
-    }
-    if (!userNames.includes('angkatan')) {
-      db.run(`ALTER TABLE users ADD COLUMN angkatan TEXT`);
-    }
-  });
+// Migrate users table to include additional fields if missing
+db.all(`PRAGMA table_info(users)`, [], (err, cols) => {
+  if (err) return console.error(err);
+  const userCols = cols.map(c => c.name);
+  if (!userCols.includes('nim')) {
+    db.run(`ALTER TABLE users ADD COLUMN nim TEXT`);
+  }
+  if (!userCols.includes('prodi')) {
+    db.run(`ALTER TABLE users ADD COLUMN prodi TEXT`);
+  }
+  if (!userCols.includes('angkatan')) {
+    db.run(`ALTER TABLE users ADD COLUMN angkatan TEXT`);
+  }
 });
 
 app.get('/', (req, res) => {
